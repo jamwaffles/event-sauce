@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "event-sauce",
+    "event-sauce-derive"
+]
+
+[patch.crates-io]
+event-sauce = { path = "event-sauce" }
+event-sauce-derive = { path = "event-sauce-derive" }
