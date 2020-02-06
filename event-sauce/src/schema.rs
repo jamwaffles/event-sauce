@@ -1,7 +1,9 @@
+#![allow(missing_docs)]
+
 table! {
     events (id) {
         id -> Uuid,
-        sequence_number -> Int4,
+        sequence_number -> Nullable<Int4>,
         event_type -> Varchar,
         entity_type -> Varchar,
         entity_id -> Uuid,
