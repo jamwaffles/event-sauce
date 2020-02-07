@@ -131,7 +131,7 @@ where
     ///
     /// This event will mark an entity as deleted. How this is applied is dependent on the entity's
     /// [`AggregateDelete`] implementation.
-    fn from_delete_payload(data: ED, entity: &Self::Entity, session_id: Option<Uuid>) -> Event<ED> {
+    fn from_delete_payload(entity: &Self::Entity, data: ED, session_id: Option<Uuid>) -> Event<ED> {
         Event {
             data: Some(data),
             entity_id: entity.entity_id(),
