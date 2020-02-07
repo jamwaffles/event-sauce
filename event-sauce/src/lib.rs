@@ -106,7 +106,7 @@ where
     /// Create an update [`Event`] from a given event payload, base entity and optional session ID
     ///
     /// This event will be applied on top of the entity by the [`Store`].
-    fn from_update_payload(data: ED, entity: &Self::Entity, session_id: Option<Uuid>) -> Event<ED> {
+    fn from_update_payload(entity: &Self::Entity, data: ED, session_id: Option<Uuid>) -> Event<ED> {
         Event {
             data: Some(data),
             entity_id: entity.entity_id(),

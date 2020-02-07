@@ -69,7 +69,7 @@ pub fn derive_event_update(parsed: &DeriveInput, struct_body: &DataStruct) -> To
             impl event_sauce::FromUpdatePayload<#ident> for event_sauce::Event<#ident> {
                 type Entity = #target_model;
 
-                fn from_update_payload(data: #ident, entity: &Self::Entity, session_id: Option<uuid::Uuid>) -> event_sauce::Event<#ident> {
+                fn from_update_payload(entity: &Self::Entity, data: #ident, session_id: Option<uuid::Uuid>) -> event_sauce::Event<#ident> {
                     use event_sauce::EntityId;
 
                     event_sauce::Event {
