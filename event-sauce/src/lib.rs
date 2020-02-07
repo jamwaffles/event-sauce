@@ -1,30 +1,41 @@
 //! Event store module
 
-#[macro_use]
-extern crate diesel;
-
 mod db_event;
 mod event;
-mod schema;
 mod triggers;
 
 use crate::{
     db_event::DBEvent,
     event::Event,
-    schema::events,
     triggers::{OnCreated, OnUpdated},
 };
-use diesel::{
-    pg::PgConnection,
-    prelude::*,
-    query_builder::{AsChangeset, InsertStatement},
-    query_dsl::methods::LoadQuery,
-    r2d2::{ConnectionManager, Pool},
-};
 use log::error;
+use postgres::Client;
 use serde::{de::Deserialize, Serialize};
 use std::{convert::TryInto, error::Error};
 use uuid::Uuid;
+
+// TODO: Integrate this better and actually call it. Placed here for now just for safe keeping
+fn create_table(client: &Client) -> Result<(), Box<dyn Error>> {
+    client.batch_execute(r#"
+        create extension if not exists "uuid-ossp";
+
+        create table if not exists events(
+            id uuid primary key default uuid_generate_v4(),
+            sequence_number serial,
+            event_type varchar(64) not null,
+            entity_type varchar(64) not null,
+            entity_id uuid not null,
+            data jsonb, -- This field is null if the event is purged, in such case purged_at and purger_id won't be null either.
+            session_id uuid null,
+            created_at timestamp with time zone not null,
+            purger_id uuid null,
+            purged_at timestamp with time zone null
+        );
+    "#)?;
+
+    Ok(())
+}
 
 /// Trait implemented for all event payloads
 ///
@@ -132,18 +143,18 @@ where
 }
 
 /// Insert or update an entity in the chosen backing store
-pub trait Aggregate: Sized + AsChangeset {
+pub trait Aggregate: Sized {
     /// Insert or update the current entity
-    fn persist(&self, conn: &PgConnection) -> Result<Self, diesel::result::Error>;
+    fn persist(&self, conn: &Client) -> Result<Self, FIXME>;
 }
 
 /// Delete an entity from the backing store
-pub trait AggregateDelete: Sized + AsChangeset {
+pub trait AggregateDelete: Sized {
     /// Remove the aggregated entity from its table
     ///
     /// This could be implemented as a deletion from the table, or the addition of a "deleted at"
     /// timestamp in the appropriate column.
-    fn delete(self, conn: &PgConnection) -> Result<(), diesel::result::Error>;
+    fn delete(self, conn: &Client) -> Result<(), FIXME>;
 }
 
 /// Event store
@@ -222,13 +233,14 @@ pub trait AggregateDelete: Sized + AsChangeset {
 /// ```
 #[derive(Clone)]
 pub struct EventStore {
+    // TODO: Make this generic to allow pool support
     /// Postgres database connection
-    connection: Pool<ConnectionManager<PgConnection>>,
+    connection: Client,
 }
 
 impl EventStore {
     /// Create a new event store instance
-    pub fn new(connection: Pool<ConnectionManager<PgConnection>>) -> EventStore {
+    pub fn new(connection: Client) -> EventStore {
         EventStore { connection }
     }
 
@@ -236,9 +248,7 @@ impl EventStore {
     pub fn create<ED, E, S>(&self, event: Event<ED>) -> Result<E, Box<dyn Error>>
     where
         ED: EventData,
-        S: Table,
-        E: Aggregate + AggregateCreate<ED> + Insertable<S> + OnCreated<ED>,
-        InsertStatement<S, E::Values>: LoadQuery<PgConnection, E>,
+        E: Aggregate + AggregateCreate<ED> + OnCreated<ED>,
     {
         self.create_raw(&event.try_into()?)
     }
@@ -251,9 +261,7 @@ impl EventStore {
     pub fn create_raw<ED, E, S>(&self, db_event: &DBEvent) -> Result<E, Box<dyn Error>>
     where
         ED: EventData,
-        S: Table,
-        E: Aggregate + AggregateCreate<ED> + Insertable<S> + OnCreated<ED>,
-        InsertStatement<S, E::Values>: LoadQuery<PgConnection, E>,
+        E: Aggregate + AggregateCreate<ED> + OnCreated<ED>,
     {
         let conn = self.connection.get()?;
         let created_entity = conn.transaction::<E, Box<dyn Error>, _>(|| {
