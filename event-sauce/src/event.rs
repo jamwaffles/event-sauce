@@ -1,6 +1,6 @@
 //! An event
 
-use super::{db_event::DBEvent, EventData};
+use crate::{db_event::DBEvent, EventData};
 use chrono::{DateTime, Utc};
 use std::convert::TryFrom;
 use uuid::Uuid;
@@ -83,8 +83,8 @@ impl<S: EventData> TryFrom<DBEvent> for Event<S> {
     ///
     /// ## Read a `UserRegistered` event
     ///
-    /// ```rust
-    /// use backend::{event_store::{DBEvent, Event}, events::UserRegistered};
+    /// ```rust,ignore
+    /// use event_sauce::{DBEvent, Event};
     /// use std::convert::TryFrom;
     ///
     ///    # let created_at = chrono::Utc::now();

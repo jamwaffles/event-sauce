@@ -1,6 +1,6 @@
 //! Traits attached to events to allow side effects when creating/updating entities
 
-use super::EventData;
+use crate::EventData;
 use std::fmt::Debug;
 
 /// Perform actions on an entity when it is created

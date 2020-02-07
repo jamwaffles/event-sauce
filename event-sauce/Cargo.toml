@@ -40,3 +40,7 @@ version = "0.4.10"
 [dependencies.uuid]
 features = ["v4", "serde"]
 version = "0.8.1"
+
+[dev-dependencies]
+event-sauce-derive = "*"
+
