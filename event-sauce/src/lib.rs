@@ -6,7 +6,7 @@ pub mod prelude;
 mod triggers;
 
 use crate::db_event::DBEvent;
-pub use crate::triggers::OnCreated;
+pub use crate::triggers::{OnCreated, OnUpdated};
 use log::error;
 use postgres::types::ToSql;
 use postgres::GenericClient;
@@ -284,22 +284,12 @@ where
         self.create_raw(&event.try_into()?)
     }
 
-    /// Create a new entity from a raw [`DBEvent`]
-    ///
-    /// The [`Store::create`] method should be preferred. This method is used to ingest legacy
-    /// events during a migration. The [`DBEvent`] is inserted into the event log verbatim without
-    /// any payload shape checks.
-    pub fn create_raw<ED, E>(&mut self, db_event: &DBEvent) -> Result<E, Box<dyn Error>>
-    where
-        ED: EventData,
-        E: Aggregate + AggregateCreate<ED> + OnCreated<ED> + Default,
-    {
-        let mut transaction = self.client.transaction()?;
-
-        // Save event into events table
-        let db_event: DBEvent = transaction
-            .query_one(
-                r#"INSERT INTO events (
+    fn insert_event(
+        txn: &mut Transaction,
+        db_event: &DBEvent,
+    ) -> Result<DBEvent, postgres::error::Error> {
+        txn.query_one(
+            r#"INSERT INTO events (
                 id,
                 event_type,
                 entity_type,
@@ -321,19 +311,35 @@ where
                 $9
             ) RETURNING *
             "#,
-                &[
-                    &db_event.id as &(dyn ToSql + Sync),
-                    &db_event.event_type,
-                    &db_event.entity_type,
-                    &db_event.entity_id,
-                    &db_event.data,
-                    &db_event.session_id,
-                    &db_event.created_at,
-                    &db_event.purger_id,
-                    &db_event.purged_at,
-                ],
-            )?
-            .try_into()?;
+            &[
+                &db_event.id as &(dyn ToSql + Sync),
+                &db_event.event_type,
+                &db_event.entity_type,
+                &db_event.entity_id,
+                &db_event.data,
+                &db_event.session_id,
+                &db_event.created_at,
+                &db_event.purger_id,
+                &db_event.purged_at,
+            ],
+        )?
+        .try_into()
+    }
+
+    /// Create a new entity from a raw [`DBEvent`]
+    ///
+    /// The [`Store::create`] method should be preferred. This method is used to ingest legacy
+    /// events during a migration. The [`DBEvent`] is inserted into the event log verbatim without
+    /// any payload shape checks.
+    pub fn create_raw<ED, E>(&mut self, db_event: &DBEvent) -> Result<E, Box<dyn Error>>
+    where
+        ED: EventData,
+        E: Aggregate + AggregateCreate<ED> + OnCreated<ED> + Default,
+    {
+        let mut transaction = self.client.transaction()?;
+
+        // Save event into events table
+        let db_event = Self::insert_event(&mut transaction, db_event)?;
 
         let DBEvent {
             id: event_id,
@@ -363,53 +369,57 @@ where
         Ok(created_entity)
     }
 
-    // /// Apply an event onto a given entity
-    // pub fn update<ED, E>(&self, state: E, event: Event<ED>) -> Result<E, Box<dyn Error>>
-    // where
-    //     ED: EventData,
-    //     E: Aggregate + AggregateApply<ED> + OnUpdated<ED>,
-    // {
-    //     self.update_raw(state, &event.try_into()?)
-    // }
+    /// Apply an event onto a given entity
+    pub fn update<ED, E>(&mut self, state: E, event: Event<ED>) -> Result<E, Box<dyn Error>>
+    where
+        ED: EventData,
+        E: Aggregate + AggregateApply<ED> + OnUpdated<ED>,
+    {
+        self.update_raw(state, &event.try_into()?)
+    }
 
-    // /// Apply a raw [`DBEvent`] event onto a given entity
-    // ///
-    // /// The [`Store::update`] method should be preferred. This method is used to ingest legacy
-    // /// events during a migration. The [`DBEvent`] is inserted into the event log verbatim without
-    // /// any payload shape checks.
-    // pub fn update_raw<ED, E>(&self, state: E, db_event: &DBEvent) -> Result<E, Box<dyn Error>>
-    // where
-    //     ED: EventData,
-    //     E: Aggregate + AggregateApply<ED> + OnUpdated<ED>,
-    // {
-    //     let conn = self.connection.get()?;
+    /// Apply a raw [`DBEvent`] event onto a given entity
+    ///
+    /// The [`Store::update`] method should be preferred. This method is used to ingest legacy
+    /// events during a migration. The [`DBEvent`] is inserted into the event log verbatim without
+    /// any payload shape checks.
+    pub fn update_raw<ED, E>(&mut self, entity: E, db_event: &DBEvent) -> Result<E, Box<dyn Error>>
+    where
+        ED: EventData,
+        E: Aggregate + AggregateApply<ED> + OnUpdated<ED>,
+    {
+        let mut transaction = self.client.transaction()?;
 
-    //     let updated_entity = conn.transaction::<E, Box<dyn Error>, _>(|| {
-    //         let db_event = diesel::insert_into(events::table)
-    //             .values(db_event)
-    //             .on_conflict(events::dsl::id)
-    //             .do_update()
-    //             .set(db_event)
-    //             .get_result::<DBEvent>(&conn)?;
+        // Save event into events table
+        let db_event = Self::insert_event(&mut transaction, db_event)?;
 
-    //         let state: E = state.apply(db_event.try_into()?)?;
+        let DBEvent {
+            id: event_id,
+            event_type,
+            ..
+        } = db_event.clone();
 
-    //         let result = state.persist(&conn)?;
+        // Update entity in memory
+        let entity: E = entity.apply(db_event.try_into()?)?;
 
-    //         Ok(result)
-    //     })?;
+        // Save the updated entity into its data store
+        let created_entity = entity
+            .persist(&mut transaction)
+            .map_err(|_| Box::new(PlaceholderError))?;
 
-    //     // Trigger side effect. Log and swallow error on failure.
-    //     match updated_entity.on_updated() {
-    //         Ok(_) => (),
-    //         Err(e) => error!(
-    //             "Failed to trigger update side effect for event {} (ID {}): {:?}",
-    //             db_event.event_type, db_event.id, e
-    //         ),
-    //     };
+        transaction.commit()?;
 
-    //     Ok(updated_entity)
-    // }
+        // Trigger side effect. Log and swallow error on failure.
+        match created_entity.on_updated() {
+            Ok(_) => (),
+            Err(e) => error!(
+                "Failed to trigger update side effect for event {} (ID {}): {:?}",
+                event_type, event_id, e
+            ),
+        };
+
+        Ok(created_entity)
+    }
 
     // /// Delete an entity using a given event
     // ///

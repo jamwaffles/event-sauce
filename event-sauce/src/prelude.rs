@@ -1,1 +1,1 @@
-pub use crate::{EventData, FromCreatePayload};
+pub use crate::{EventData, FromCreatePayload, FromUpdatePayload};
