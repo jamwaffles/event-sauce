@@ -28,10 +28,9 @@ impl fmt::Display for PlaceholderError {
 }
 
 impl std::error::Error for PlaceholderError {
-    //
+    // TODO
 }
 
-// TODO: Integrate this better and actually call it. Placed here for now just for safe keeping
 fn create_table<C>(client: &mut C) -> Result<(), postgres::error::Error>
 where
     C: GenericClient,
@@ -170,17 +169,14 @@ pub trait Aggregate: Sized {
 }
 
 /// Delete an entity from the backing store
-pub trait AggregateDelete<C>: Sized
-where
-    C: GenericClient,
-{
+pub trait AggregateDelete: Sized {
     type Error;
 
     /// Remove the aggregated entity from its table
     ///
     /// This could be implemented as a deletion from the table, or the addition of a "deleted at"
     /// timestamp in the appropriate column.
-    fn delete(self, conn: &mut C) -> Result<(), Self::Error>;
+    fn delete(self, conn: &mut Transaction) -> Result<(), Self::Error>;
 }
 
 /// Event store
@@ -421,44 +417,40 @@ where
         Ok(created_entity)
     }
 
-    // /// Delete an entity using a given event
-    // ///
-    // /// As mentioned in [`FromDeletePayload`], how this is applied is dependent on the entity's
-    // /// [`AggregateDelete`] implementation. It could remove the record from the database, or add a
-    // /// "deleted at" timestamp to an appropriate column.
-    // pub fn delete<ED, E>(&self, state: E, event: Event<ED>) -> Result<(), Box<dyn Error>>
-    // where
-    //     ED: EventData,
-    //     E: AggregateDelete,
-    // {
-    //     self.delete_raw::<ED, E>(state, &event.try_into()?)
-    // }
+    /// Delete an entity using a given event
+    ///
+    /// As mentioned in [`FromDeletePayload`], how this is applied is dependent on the entity's
+    /// [`AggregateDelete`] implementation. It could remove the record from the database, or add a
+    /// "deleted at" timestamp to an appropriate column.
+    pub fn delete<ED, E>(&mut self, state: E, event: Event<ED>) -> Result<(), Box<dyn Error>>
+    where
+        ED: EventData,
+        E: AggregateDelete,
+    {
+        self.delete_raw::<ED, E>(state, &event.try_into()?)
+    }
 
-    // /// Delete an entity using a [`DBEvent`]
-    // ///
-    // /// The [`Store::delete`] method should be preferred. This method is used to ingest legacy
-    // /// events during a migration. The [`DBEvent`] is inserted into the event log verbatim without
-    // /// any payload shape checks.
-    // pub fn delete_raw<ED, E>(&self, state: E, db_event: &DBEvent) -> Result<(), Box<dyn Error>>
-    // where
-    //     ED: EventData,
-    //     E: AggregateDelete,
-    // {
-    //     let conn = self.connection.get()?;
+    /// Delete an entity using a [`DBEvent`]
+    ///
+    /// The [`Store::delete`] method should be preferred. This method is used to ingest legacy
+    /// events during a migration. The [`DBEvent`] is inserted into the event log verbatim without
+    /// any payload shape checks.
+    pub fn delete_raw<ED, E>(&mut self, state: E, db_event: &DBEvent) -> Result<(), Box<dyn Error>>
+    where
+        ED: EventData,
+        E: AggregateDelete,
+    {
+        let mut transaction = self.client.transaction()?;
 
-    //     conn.transaction::<(), Box<dyn Error>, _>(|| {
-    //         let _db_event = diesel::insert_into(events::table)
-    //             .values(db_event)
-    //             .on_conflict(events::dsl::id)
-    //             .do_update()
-    //             .set(db_event)
-    //             .get_result::<DBEvent>(&conn)?;
+        // Save event into events table
+        Self::insert_event(&mut transaction, db_event)?;
 
-    //         state.delete(&conn)?;
+        state
+            .delete(&mut transaction)
+            .map_err(|_| Box::new(PlaceholderError))?;
 
-    //         Ok(())
-    //     })?;
+        transaction.commit()?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 }
