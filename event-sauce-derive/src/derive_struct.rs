@@ -9,9 +9,9 @@ fn impl_event_data(parsed: &DeriveInput, struct_body: &DataStruct) -> TokenStrea
     let ident_quoted = ident.to_string();
 
     quote! {
-        use crate::event_store::EntityId;
+        use event_sauce::EntityId;
 
-        impl crate::event_store::EventData for #ident {
+        impl event_sauce::EventData for #ident {
             fn entity_type() -> String {
                 String::from(#target_model::entity_type())
             }
@@ -37,12 +37,12 @@ pub fn derive_event_create(parsed: &DeriveInput, struct_body: &DataStruct) -> To
         const #dummy_const: () = {
             #event_data_impl
 
-            impl crate::event_store::FromCreatePayload<#ident> for crate::event_store::Event<#ident> {
-                fn from_create_payload(data: #ident, session_id: Option<uuid::Uuid>) -> crate::event_store::Event<#ident> {
-                    crate::event_store::Event {
+            impl event_sauce::FromCreatePayload<#ident> for event_sauce::Event<#ident> {
+                fn from_create_payload(data: #ident, session_id: Option<uuid::Uuid>) -> event_sauce::Event<#ident> {
+                    event_sauce::Event {
                         data: Some(data),
                         session_id,
-                        ..crate::event_store::Event::default()
+                        ..event_sauce::Event::default()
                     }
                 }
             }
@@ -66,17 +66,17 @@ pub fn derive_event_update(parsed: &DeriveInput, struct_body: &DataStruct) -> To
         const #dummy_const: () = {
             #event_data_impl
 
-            impl crate::event_store::FromUpdatePayload<#ident> for crate::event_store::Event<#ident> {
+            impl event_sauce::FromUpdatePayload<#ident> for event_sauce::Event<#ident> {
                 type Entity = #target_model;
 
-                fn from_update_payload(data: #ident, entity: &Self::Entity, session_id: Option<uuid::Uuid>) -> crate::event_store::Event<#ident> {
-                    use crate::event_store::EntityId;
+                fn from_update_payload(entity: &Self::Entity, data: #ident, session_id: Option<uuid::Uuid>) -> event_sauce::Event<#ident> {
+                    use event_sauce::EntityId;
 
-                    crate::event_store::Event {
+                    event_sauce::Event {
                         data: Some(data),
                         entity_id: entity.entity_id(),
                         session_id,
-                        ..crate::event_store::Event::default()
+                        ..event_sauce::Event::default()
                     }
                 }
             }
@@ -100,17 +100,17 @@ pub fn derive_event_delete(parsed: &DeriveInput, struct_body: &DataStruct) -> To
         const #dummy_const: () = {
             #event_data_impl
 
-            impl crate::event_store::FromDeletePayload<#ident> for crate::event_store::Event<#ident> {
+            impl event_sauce::FromDeletePayload<#ident> for event_sauce::Event<#ident> {
                 type Entity = #target_model;
 
-                fn from_delete_payload(data: #ident, entity: &Self::Entity, session_id: Option<uuid::Uuid>) -> crate::event_store::Event<#ident> {
-                    use crate::event_store::EntityId;
+                fn from_delete_payload(entity: &Self::Entity, data: #ident, session_id: Option<uuid::Uuid>) -> event_sauce::Event<#ident> {
+                    use event_sauce::EntityId;
 
-                    crate::event_store::Event {
+                    event_sauce::Event {
                         data: Some(data),
                         entity_id: entity.entity_id(),
                         session_id,
-                        ..crate::event_store::Event::default()
+                        ..event_sauce::Event::default()
                     }
                 }
             }
@@ -131,8 +131,8 @@ pub fn derive_entity(parsed: &DeriveInput, _struct_body: &DataStruct) -> TokenSt
 
     quote! {
         const #dummy_const: () = {
-            impl crate::event_store::EntityId for #ident {
-                fn entity_id(&self) -> Uuid {
+            impl event_sauce::EntityId for #ident {
+                fn entity_id(&self) -> uuid::Uuid {
                     self.id
                 }
 

@@ -1,0 +1,17 @@
+version: '3.2'
+services:
+  postgres:
+    image: 'postgres:11-alpine'
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: sauce
+      POSTGRES_USER: sauce
+      POSTGRES_PASSWORD: sauce
+    volumes:
+      - './postgres_initdb:/docker-entrypoint-initdb.d:ro'
+    networks:
+      - postgres
+
+networks:
+  postgres:
