@@ -2,6 +2,11 @@
 precheck_steps: &precheck_steps
   docker:
     - image: circleci/rust:1.40.0
+    - image: postgres:11-alpine
+      environment:
+        POSTGRES_USER: sauce
+        POSTGRES_PASSWORD: sauce
+        POSTGRES_DB: sauce
   steps:
     - checkout
     - restore_cache:
@@ -10,6 +15,7 @@ precheck_steps: &precheck_steps
     - run: sudo pip install linkchecker
     - run: rustup default ${RUST_VERSION:-stable}
     - run: rustup component add rustfmt
+    - run: rustup toolchain add nightly
     - run: ./build.sh
     - save_cache:
         key: v1-event-sauce-{{ .Environment.RUST_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "event-sauce/Cargo.toml" }}-{{ checksum "event-sauce-derive/Cargo.toml" }}

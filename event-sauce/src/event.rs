@@ -6,8 +6,6 @@ use std::convert::TryFrom;
 use uuid::Uuid;
 
 /// Event definition
-///
-/// This is a wrapper around types in the [`events`](crate::events) module with added metadata
 #[derive(Debug, Clone, PartialEq)]
 pub struct Event<D>
 where

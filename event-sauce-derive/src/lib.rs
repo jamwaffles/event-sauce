@@ -7,6 +7,7 @@
 //! [`backend::event_store`]: ../backend/index.html
 
 #![recursion_limit = "128"]
+#![deny(intra_doc_link_resolution_failure)]
 #![deny(missing_docs)]
 
 #[macro_use]

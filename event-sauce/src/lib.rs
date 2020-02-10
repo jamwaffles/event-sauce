@@ -1,5 +1,7 @@
 //! Event store module
 
+#![deny(intra_doc_link_resolution_failure)]
+
 mod db_event;
 mod event;
 pub mod prelude;
