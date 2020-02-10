@@ -1,7 +1,7 @@
 # Check that everything (tests, benches, etc) builds in std environments
 precheck_steps: &precheck_steps
   docker:
-    - image: circleci/rust:1.40.0
+    - image: circleci/rust:1.41.0
     - image: postgres:11-alpine
       environment:
         POSTGRES_USER: sauce
