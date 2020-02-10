@@ -1,7 +1,8 @@
 use event_sauce::{prelude::*, Aggregate, AggregateCreate, Event, OnCreated, Store};
 
+use postgres::NoTls;
 use postgres::Transaction;
-use postgres::{Client, NoTls};
+use r2d2_postgres::PostgresConnectionManager;
 use std::error::Error;
 
 #[derive(event_sauce_derive::Entity, Default, Debug)]
@@ -67,8 +68,12 @@ impl AggregateCreate<CreationEvent> for Model {
 
 #[test]
 fn create() {
-    let mut client = Client::connect("postgres://sauce:sauce@localhost/sauce", NoTls)
-        .expect("Failed to connect to test DB");
+    let cm = PostgresConnectionManager::new(
+        "postgres://sauce:sauce@localhost/sauce".parse().unwrap(),
+        NoTls,
+    );
+    let pool = r2d2::Pool::new(cm).unwrap();
+    let mut client = pool.get().unwrap();
 
     client
         .batch_execute(
@@ -79,7 +84,7 @@ fn create() {
         )
         .expect("Could not create models table");
 
-    let mut store = Store::new(client).expect("Failed to initialise store");
+    let mut store = Store::new(pool).expect("Failed to initialise store");
 
     let model: Model = store
         .create(Event::from_create_payload(

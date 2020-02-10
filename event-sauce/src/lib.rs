@@ -11,8 +11,9 @@ use crate::db_event::DBEvent;
 pub use crate::triggers::{OnCreated, OnUpdated};
 use log::error;
 use postgres::types::ToSql;
-use postgres::GenericClient;
+use postgres::NoTls;
 use postgres::Transaction;
+use r2d2_postgres::PostgresConnectionManager;
 use serde::{de::Deserialize, Serialize};
 use std::fmt;
 use std::{convert::TryInto, error::Error};
@@ -33,11 +34,10 @@ impl std::error::Error for PlaceholderError {
     // TODO
 }
 
-fn create_table<C>(client: &mut C) -> Result<(), postgres::error::Error>
-where
-    C: GenericClient,
-{
-    client.batch_execute(r#"
+fn create_table(
+    pool: &mut r2d2::Pool<PostgresConnectionManager<NoTls>>,
+) -> Result<(), Box<dyn Error>> {
+    pool.get()?.batch_execute(r#"
         create extension if not exists "uuid-ossp";
 
         create table if not exists events(
@@ -255,22 +255,20 @@ pub trait AggregateDelete: Sized {
 ///     }
 /// )
 /// ```
-// TODO: Re-enable clone support
-// #[derive(Clone)]
-pub struct Store<C> {
-    /// Postgres database connection
-    client: C,
+#[derive(Clone)]
+pub struct Store {
+    /// Postgres database connection pool
+    pool: r2d2::Pool<PostgresConnectionManager<NoTls>>,
 }
 
-impl<C> Store<C>
-where
-    C: GenericClient,
-{
+impl Store {
     /// Create a new event store instance
-    pub fn new(mut client: C) -> Result<Self, postgres::error::Error> {
-        create_table(&mut client)?;
+    pub fn new(
+        mut pool: r2d2::Pool<PostgresConnectionManager<NoTls>>,
+    ) -> Result<Self, Box<dyn Error>> {
+        create_table(&mut pool)?;
 
-        Ok(Store { client })
+        Ok(Store { pool })
     }
 
     /// Create a new entity `E` given an event with payload `ED`
@@ -282,12 +280,10 @@ where
         self.create_raw(&event.try_into()?)
     }
 
-    fn insert_event(
-        txn: &mut Transaction,
-        db_event: &DBEvent,
-    ) -> Result<DBEvent, postgres::error::Error> {
-        txn.query_one(
-            r#"INSERT INTO events (
+    fn insert_event(txn: &mut Transaction, db_event: &DBEvent) -> Result<DBEvent, Box<dyn Error>> {
+        let inserted = txn
+            .query_one(
+                r#"INSERT INTO events (
                 id,
                 event_type,
                 entity_type,
@@ -309,19 +305,22 @@ where
                 $9
             ) RETURNING *
             "#,
-            &[
-                &db_event.id as &(dyn ToSql + Sync),
-                &db_event.event_type,
-                &db_event.entity_type,
-                &db_event.entity_id,
-                &db_event.data,
-                &db_event.session_id,
-                &db_event.created_at,
-                &db_event.purger_id,
-                &db_event.purged_at,
-            ],
-        )?
-        .try_into()
+                &[
+                    &db_event.id as &(dyn ToSql + Sync),
+                    &db_event.event_type,
+                    &db_event.entity_type,
+                    &db_event.entity_id,
+                    &db_event.data,
+                    &db_event.session_id,
+                    &db_event.created_at,
+                    &db_event.purger_id,
+                    &db_event.purged_at,
+                ],
+            )
+            .map_err(Box::new)?
+            .try_into()?;
+
+        Ok(inserted)
     }
 
     /// Create a new entity from a raw [`DBEvent`]
@@ -334,7 +333,8 @@ where
         ED: EventData,
         E: Aggregate + AggregateCreate<ED> + OnCreated<ED> + Default,
     {
-        let mut transaction = self.client.transaction()?;
+        let mut conn = self.pool.get()?;
+        let mut transaction = conn.transaction()?;
 
         // Save event into events table
         let db_event = Self::insert_event(&mut transaction, db_event)?;
@@ -386,7 +386,8 @@ where
         ED: EventData,
         E: Aggregate + AggregateApply<ED> + OnUpdated<ED>,
     {
-        let mut transaction = self.client.transaction()?;
+        let mut conn = self.pool.get()?;
+        let mut transaction = conn.transaction()?;
 
         // Save event into events table
         let db_event = Self::insert_event(&mut transaction, db_event)?;
@@ -442,7 +443,8 @@ where
         ED: EventData,
         E: AggregateDelete,
     {
-        let mut transaction = self.client.transaction()?;
+        let mut conn = self.pool.get()?;
+        let mut transaction = conn.transaction()?;
 
         // Save event into events table
         Self::insert_event(&mut transaction, db_event)?;
