@@ -1,11 +1,11 @@
 [workspace]
 members = [
     "event-sauce",
-    "event-sauce-derive",
+    # "event-sauce-derive",
     "storage-sqlx-pg"
 ]
 
 [patch.crates-io]
 event-sauce = { path = "event-sauce" }
-event-sauce-derive = { path = "event-sauce-derive" }
+# event-sauce-derive = { path = "event-sauce-derive" }
 event-sauce-storage-sqlx-pg = { path = "storage-sqlx-pg" }
