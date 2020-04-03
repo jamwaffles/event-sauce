@@ -1,8 +1,8 @@
 //! Database storage for [`Event`]s
 
+use crate::Persistable;
 use crate::{event::Event, EventData};
 use chrono::{DateTime, Utc};
-use postgres::Row;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
@@ -89,21 +89,21 @@ impl<S: EventData> TryFrom<Event<S>> for DBEvent {
     }
 }
 
-impl TryFrom<Row> for DBEvent {
-    type Error = postgres::error::Error;
+// impl TryFrom<Row> for DBEvent {
+//     type Error = postgres::error::Error;
 
-    fn try_from(row: Row) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: row.try_get("id")?,
-            sequence_number: row.try_get("sequence_number")?,
-            event_type: row.try_get("event_type")?,
-            entity_type: row.try_get("entity_type")?,
-            entity_id: row.try_get("entity_id")?,
-            session_id: row.try_get("session_id")?,
-            purger_id: row.try_get("purger_id")?,
-            created_at: row.try_get("created_at")?,
-            purged_at: row.try_get("purged_at")?,
-            data: row.try_get("data")?,
-        })
-    }
-}
+//     fn try_from(row: Row) -> Result<Self, Self::Error> {
+//         Ok(Self {
+//             id: row.try_get("id")?,
+//             sequence_number: row.try_get("sequence_number")?,
+//             event_type: row.try_get("event_type")?,
+//             entity_type: row.try_get("entity_type")?,
+//             entity_id: row.try_get("entity_id")?,
+//             session_id: row.try_get("session_id")?,
+//             purger_id: row.try_get("purger_id")?,
+//             created_at: row.try_get("created_at")?,
+//             purged_at: row.try_get("purged_at")?,
+//             data: row.try_get("data")?,
+//         })
+//     }
+// }

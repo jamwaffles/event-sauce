@@ -50,24 +50,24 @@ where
     pub purged_at: Option<DateTime<Utc>>,
 }
 
-impl<D> Default for Event<D>
-where
-    D: EventData,
-{
-    fn default() -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            event_type: D::event_type(),
-            entity_type: D::entity_type(),
-            entity_id: Uuid::new_v4(),
-            session_id: None,
-            purger_id: None,
-            data: None,
-            created_at: Utc::now(),
-            purged_at: None,
-        }
-    }
-}
+// impl<D> Default for Event<D>
+// where
+//     D: EventData,
+// {
+//     fn default() -> Self {
+//         Self {
+//             id: Uuid::new_v4(),
+//             event_type: D::EVENT_TYPE.to_string(),
+//             entity_type: D::entity_type(),
+//             entity_id: Uuid::new_v4(),
+//             session_id: None,
+//             purger_id: None,
+//             data: None,
+//             created_at: Utc::now(),
+//             purged_at: None,
+//         }
+//     }
+// }
 
 impl<S: EventData> TryFrom<DBEvent> for Event<S> {
     type Error = serde_json::Error;
