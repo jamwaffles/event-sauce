@@ -75,6 +75,9 @@ impl Persistable<SqlxPgStore, DBEvent> for DBEvent {
                 $6,
                 $7
             )
+            on conflict (id)
+            do update set
+            data = excluded.data
             returning *"#,
         )
         .bind(self.id)
