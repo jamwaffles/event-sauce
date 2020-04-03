@@ -1,5 +1,5 @@
 [package]
-name = "event-sauce-storage-sqlx-pg"
+name = "event-sauce-storage-sqlx-postgres"
 version = "0.1.0"
 authors = ["James Waples <james@wapl.es>"]
 edition = "2018"

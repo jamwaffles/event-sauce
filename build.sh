@@ -11,4 +11,5 @@ cargo bench --no-run
 
 cargo +nightly doc --all-features
 linkchecker target/doc/event_sauce/index.html
-linkchecker target/doc/event_sauce_derive/index.html
+# linkchecker target/doc/event_sauce_derive/index.html
+linkchecker target/doc/event_sauce_storage_sqlx_postgres/index.html

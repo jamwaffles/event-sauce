@@ -8,4 +8,4 @@ members = [
 [patch.crates-io]
 event-sauce = { path = "event-sauce" }
 # event-sauce-derive = { path = "event-sauce-derive" }
-event-sauce-storage-sqlx-pg = { path = "storage-sqlx-pg" }
+event-sauce-storage-sqlx-postgres = { path = "storage-sqlx-pg" }
