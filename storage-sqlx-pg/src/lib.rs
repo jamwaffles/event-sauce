@@ -1,15 +1,19 @@
-// #![deny(missing_docs)]
+//! [sqlx](https://docs.rs/sqlx) storage provider for [event-sauce](https://docs.rs/event-sauce)
+
+#![deny(missing_docs)]
 #![deny(intra_doc_link_resolution_failure)]
 
 use event_sauce::{DBEvent, EventData, Persistable, StorageBackend, StorageBuilder};
 use sqlx::{postgres::PgQueryAs, PgPool};
 use std::convert::TryInto;
 
+/// [sqlx](https://docs.rs/sqlx)-based Postgres backing store
 pub struct SqlxPgStore {
-    pub pool: PgPool,
+    pool: PgPool,
 }
 
 impl SqlxPgStore {
+    /// Create a new backing store instance with a given [`PgPool`](sqlx::PgPool)
     pub async fn new(pool: PgPool) -> Result<Self, sqlx::Error> {
         Self::create_events_table(&pool).await?;
 
