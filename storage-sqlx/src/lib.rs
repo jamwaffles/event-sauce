@@ -9,7 +9,8 @@ use std::convert::TryInto;
 
 /// [sqlx](https://docs.rs/sqlx)-based Postgres backing store
 pub struct SqlxPgStore {
-    pool: PgPool,
+    /// sqlx [`PgPool`](sqlx::PgPool) to commnicate with the database
+    pub pool: PgPool,
 }
 
 impl SqlxPgStore {

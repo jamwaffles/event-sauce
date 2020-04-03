@@ -3,7 +3,7 @@ use event_sauce::{
     UpdateEntityBuilder,
 };
 // use event_sauce::UpdateEntity;
-use event_sauce_storage_sqlx_postgres::SqlxPgStore;
+use event_sauce_storage_sqlx::SqlxPgStore;
 use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
