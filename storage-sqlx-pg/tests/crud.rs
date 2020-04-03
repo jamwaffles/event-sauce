@@ -1,18 +1,27 @@
-use event_sauce::CreateEntity;
+use event_sauce::AggregateCreate;
+use event_sauce::AggregateUpdate;
+use event_sauce::CreateEntityBuilder;
 use event_sauce::Event;
 use event_sauce::EventData;
 use event_sauce::Persistable;
-use event_sauce::StorageBuilder;
-use event_sauce::UpdateEntity;
+use event_sauce::UpdateEntityBuilder;
+// use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx_pg::SqlxPgStore;
+use sqlx::postgres::PgQueryAs;
+use sqlx::PgPool;
 use uuid::Uuid;
 
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
+const USERS_TABLE: &'static str = "crud_test_users";
+
+#[derive(serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow)]
 struct User {
     id: Uuid,
     name: String,
     email: String,
 }
+
+impl CreateEntityBuilder<UserCreated> for User {}
+impl UpdateEntityBuilder<UserEmailChanged> for User {}
 
 #[derive(serde_derive::Serialize, serde_derive::Deserialize)]
 struct UserCreated {
@@ -36,66 +45,91 @@ impl EventData for UserEmailChanged {
 }
 
 #[async_trait::async_trait]
-impl Persistable<SqlxPgStore> for User {
+impl Persistable<SqlxPgStore, User> for User {
     async fn persist(self, store: &SqlxPgStore) -> Result<Self, sqlx::Error> {
-        //
+        let blah = format!(
+            "insert into {} (id, name, email) values ($1, $2, $3) returning *",
+            USERS_TABLE
+        );
 
-        Ok(self)
+        let new = sqlx::query_as(&blah)
+            .bind(self.id)
+            .bind(self.name)
+            .bind(self.email)
+            .fetch_one(&store.pool)
+            .await?;
+
+        Ok(new)
     }
 }
 
-impl CreateEntity<UserCreated> for User {
-    fn try_create(
-        event: Event<UserCreated>,
-    ) -> Result<StorageBuilder<User, UserCreated>, &'static str> {
+impl AggregateCreate<UserCreated> for User {
+    fn try_aggregate_create(event: &Event<UserCreated>) -> Result<Self, &'static str> {
         let data = event
             .data
+            .as_ref()
             .ok_or("Event data must be populated to create User from UserCreated event")?;
 
-        let entity = User {
+        Ok(User {
             id: event.entity_id,
-            name: data.name,
-            email: data.email,
-        };
-
-        Ok(StorageBuilder::new(entity, event))
+            name: data.name.clone(),
+            email: data.email.clone(),
+        })
     }
 }
 
-impl UpdateEntity<UserEmailChanged> for User {
-    fn try_update(
-        self,
-        event: Event<UserEmailChanged>,
-    ) -> Result<StorageBuilder<User, UserEmailChanged>, &'static str> {
+impl AggregateUpdate<UserEmailChanged> for User {
+    fn try_aggregate_update(self, event: &Event<UserEmailChanged>) -> Result<Self, &'static str> {
         let data = event
             .data
+            .as_ref()
             .ok_or("Event data must be populated to update User from UserEmailChanged event")?;
 
         let entity = User {
-            email: data.email,
+            email: data.email.clone(),
             ..self
         };
 
-        Ok(StorageBuilder::new(entity, event))
+        Ok(entity)
     }
 }
 
-#[test]
-fn create() {
-    let mut postgres = PgPool::new("postgres://sauce:sauce@localhost/sauce")
+#[async_std::test]
+async fn create() -> Result<(), ()> {
+    let postgres = PgPool::new("postgres://sauce:sauce@localhost/sauce")
         .await
         .expect("Error creating postgres pool");
 
-    let store = SqlxPgStore::new(postgres);
+    sqlx::query(&format!(
+        r#"
+            create table if not exists {} (
+                id uuid primary key,
+                name varchar not null,
+                email varchar not null
+            );
+        "#,
+        USERS_TABLE
+    ))
+    .execute(&postgres)
+    .await
+    .expect("Failed to creeate test users table");
+
+    let store = SqlxPgStore::new(postgres).await.unwrap();
 
     let user = User::try_create(
         UserCreated {
-            name: String::new(),
-            email: String::new(),
+            name: "Bobby Beans".to_string(),
+            email: "bobby@bea.ns".to_string(),
         }
         .into_event(None),
     )
-    .unwrap();
+    .expect("Failed to create User from UserCreated event")
+    .persist(&store)
+    .await
+    .expect("Failed to persist");
 
-    let user = user.persist(&store).await.unwrap();
+    assert_eq!(user.name, "Bobby Beans".to_string(),);
+    assert_eq!(user.email, "bobby@bea.ns".to_string());
+
+    Ok(())
 }

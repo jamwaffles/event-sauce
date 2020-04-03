@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sqlx = {version = "0.3.2", features=["postgres", "uuid", "chrono", "macros"]}
-event-sauce = "0.1.0"
+sqlx = {version = "0.3.2", features=["postgres", "uuid", "chrono", "macros", "json"]}
+event-sauce = { version = "0.1.0", features = [ "sqlx" ] }
 async-trait = "0.1.29"
 uuid = "0.8.1"
 
@@ -16,3 +16,7 @@ uuid = "0.8.1"
 serde_derive = "1.0.105"
 serde = "1.0.105"
 serde_json = "1.0.50"
+
+[dev-dependencies.async-std]
+version = "1.5.0"
+features = ["attributes"]

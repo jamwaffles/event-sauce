@@ -13,9 +13,6 @@ pub use crate::triggers::{OnCreated, OnUpdated};
 use chrono::Utc;
 use serde::Deserialize;
 use serde::Serialize;
-use std::error::Error;
-use std::fmt;
-use std::marker::PhantomData;
 use uuid::Uuid;
 
 pub trait EventData: Serialize + for<'de> Deserialize<'de> {
@@ -58,42 +55,43 @@ pub trait Persistable<Store, Out>: Sized
 where
     Store: StorageBackend,
 {
-    /// TODO: Docs
     async fn persist(self, store: &Store) -> Result<Out, Store::Error>;
 }
 
-// TODO: Better error type here
-#[derive(Debug)]
-pub struct CreateEntityError;
-impl Error for CreateEntityError {}
-impl fmt::Display for CreateEntityError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(TODO debug {:?})", self)
-    }
-}
-
-// TODO: Better error type here
-#[derive(Debug)]
-pub struct UpdateEntityError;
-impl Error for UpdateEntityError {}
-impl fmt::Display for UpdateEntityError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(TODO debug {:?})", self)
-    }
-}
-
-pub trait CreateEntity<ED>: Sized
+pub trait AggregateCreate<ED>: Sized
 where
     ED: EventData,
 {
-    fn try_create(event: Event<ED>) -> Result<StorageBuilder<Self, ED>, &'static str>;
+    fn try_aggregate_create(event: &Event<ED>) -> Result<Self, &'static str>;
 }
 
-pub trait UpdateEntity<ED>: Sized
+pub trait AggregateUpdate<ED>: Sized
 where
     ED: EventData,
 {
-    fn try_update(self, event: Event<ED>) -> Result<StorageBuilder<Self, ED>, &'static str>;
+    fn try_aggregate_update(self, event: &Event<ED>) -> Result<Self, &'static str>;
+}
+
+pub trait CreateEntityBuilder<ED>: AggregateCreate<ED>
+where
+    ED: EventData,
+{
+    fn try_create(event: Event<ED>) -> Result<StorageBuilder<Self, ED>, &'static str> {
+        let entity = Self::try_aggregate_create(&event)?;
+
+        Ok(StorageBuilder::new(entity, event))
+    }
+}
+
+pub trait UpdateEntityBuilder<ED>: AggregateUpdate<ED>
+where
+    ED: EventData,
+{
+    fn try_update(self, event: Event<ED>) -> Result<StorageBuilder<Self, ED>, &'static str> {
+        let entity = self.try_aggregate_update(&event)?;
+
+        Ok(StorageBuilder::new(entity, event))
+    }
 }
 
 pub trait StorageBackend {
