@@ -7,12 +7,13 @@ mod db_event;
 mod event;
 mod triggers;
 
-pub use crate::db_event::DBEvent;
-pub use crate::event::Event;
-pub use crate::triggers::{OnCreated, OnUpdated};
+pub use crate::{
+    db_event::DBEvent,
+    event::Event,
+    triggers::{OnCreated, OnUpdated},
+};
 use chrono::Utc;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub trait EventData: Serialize + for<'de> Deserialize<'de> {
@@ -49,7 +50,6 @@ pub trait EventData: Serialize + for<'de> Deserialize<'de> {
 
 pub trait Entity {}
 
-/// TODO: Docs
 #[async_trait::async_trait]
 pub trait Persistable<Store, Out>: Sized
 where

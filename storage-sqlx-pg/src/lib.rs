@@ -1,13 +1,8 @@
 // #![deny(missing_docs)]
 #![deny(intra_doc_link_resolution_failure)]
 
-use event_sauce::DBEvent;
-use event_sauce::EventData;
-use event_sauce::Persistable;
-use event_sauce::StorageBackend;
-use event_sauce::StorageBuilder;
-use sqlx::postgres::PgQueryAs;
-use sqlx::PgPool;
+use event_sauce::{DBEvent, EventData, Persistable, StorageBackend, StorageBuilder};
+use sqlx::{postgres::PgQueryAs, PgPool};
 use std::convert::TryInto;
 
 pub struct SqlxPgStore {

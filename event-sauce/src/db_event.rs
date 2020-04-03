@@ -1,6 +1,5 @@
 //! Database storage for [`Event`]s
 
-use crate::Persistable;
 use crate::{event::Event, EventData};
 use chrono::{DateTime, Utc};
 use std::convert::TryFrom;
@@ -89,21 +88,3 @@ impl<S: EventData> TryFrom<Event<S>> for DBEvent {
         })
     }
 }
-
-// #[cfg(feature = "sqlx-postgres")]
-// impl sqlx::FromRow<'_, sqlx::PgRow<'_>> for DBEvent {
-//     fn from_row(row: &PgRow) -> Result<Self, sqlx::Error> {
-//         Ok(Self {
-//             id: row.try_get("id")?,
-//             sequence_number: row.try_get("sequence_number")?,
-//             event_type: row.try_get("event_type")?,
-//             entity_type: row.try_get("entity_type")?,
-//             entity_id: row.try_get("entity_id")?,
-//             data: row.try_get("data")?,
-//             session_id: row.try_get("session_id")?,
-//             created_at: row.try_get("created_at")?,
-//             purger_id: row.try_get("purger_id")?,
-//             purged_at: row.try_get("purged_at")?,
-//         })
-//     }
-// }

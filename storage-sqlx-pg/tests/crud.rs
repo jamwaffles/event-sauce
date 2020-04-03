@@ -1,14 +1,10 @@
-use event_sauce::AggregateCreate;
-use event_sauce::AggregateUpdate;
-use event_sauce::CreateEntityBuilder;
-use event_sauce::Event;
-use event_sauce::EventData;
-use event_sauce::Persistable;
-use event_sauce::UpdateEntityBuilder;
+use event_sauce::{
+    AggregateCreate, AggregateUpdate, CreateEntityBuilder, Event, EventData, Persistable,
+    UpdateEntityBuilder,
+};
 // use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx_pg::SqlxPgStore;
-use sqlx::postgres::PgQueryAs;
-use sqlx::PgPool;
+use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
 const USERS_TABLE: &'static str = "crud_test_users";
