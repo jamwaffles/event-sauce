@@ -35,4 +35,4 @@ Other useful commands:
 - `cargo build` - build the crate
 - `cargo doc` - generate documentation
 - `cargo test --lib` or `cargo test --doc` - run lib or doc tests respectively, does not require Postgres server
-- `cargo test` - run all tests (requires local Postgres server to be running)
+- `cargo test -- --test-threads=1` - run all tests (requires local Postgres server to be running). `test-threads=1` is required to prevent database race conditions.
