@@ -73,8 +73,11 @@ pub trait AggregateCreate<ED>: Sized
 where
     ED: EventData,
 {
+    /// The error type to return when the entity could not be created
+    type Error;
+
     /// Attempt to create a new entity from an event
-    fn try_aggregate_create(event: &Event<ED>) -> Result<Self, &'static str>;
+    fn try_aggregate_create(event: &Event<ED>) -> Result<Self, Self::Error>;
 }
 
 /// Add the ability to update an existing entity from a given event
@@ -82,8 +85,11 @@ pub trait AggregateUpdate<ED>: Sized
 where
     ED: EventData,
 {
+    /// The error type to return when the entity could not be updated
+    type Error;
+
     /// Attempt to apply the passed event to this entity
-    fn try_aggregate_update(self, event: &Event<ED>) -> Result<Self, &'static str>;
+    fn try_aggregate_update(self, event: &Event<ED>) -> Result<Self, Self::Error>;
 }
 
 /// A wrapper trait around [`AggregateCreate`] to handle event-sauce integration boilerplate
@@ -92,7 +98,7 @@ where
     ED: EventData,
 {
     /// Create a new entity with an event
-    fn try_create(event: Event<ED>) -> Result<StorageBuilder<Self, ED>, &'static str> {
+    fn try_create(event: Event<ED>) -> Result<StorageBuilder<Self, ED>, Self::Error> {
         let entity = Self::try_aggregate_create(&event)?;
 
         Ok(StorageBuilder::new(entity, event))
@@ -105,7 +111,7 @@ where
     ED: EventData,
 {
     /// Update the entity with an event
-    fn try_update(self, event: Event<ED>) -> Result<StorageBuilder<Self, ED>, &'static str> {
+    fn try_update(self, event: Event<ED>) -> Result<StorageBuilder<Self, ED>, Self::Error> {
         let entity = self.try_aggregate_update(&event)?;
 
         Ok(StorageBuilder::new(entity, event))

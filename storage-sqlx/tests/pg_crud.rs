@@ -68,7 +68,9 @@ impl Persistable<SqlxPgStore, User> for User {
 }
 
 impl AggregateCreate<UserCreated> for User {
-    fn try_aggregate_create(event: &Event<UserCreated>) -> Result<Self, &'static str> {
+    type Error = &'static str;
+
+    fn try_aggregate_create(event: &Event<UserCreated>) -> Result<Self, Self::Error> {
         let data = event
             .data
             .as_ref()
@@ -83,7 +85,9 @@ impl AggregateCreate<UserCreated> for User {
 }
 
 impl AggregateUpdate<UserEmailChanged> for User {
-    fn try_aggregate_update(self, event: &Event<UserEmailChanged>) -> Result<Self, &'static str> {
+    type Error = &'static str;
+
+    fn try_aggregate_update(self, event: &Event<UserEmailChanged>) -> Result<Self, Self::Error> {
         let data = event
             .data
             .as_ref()
