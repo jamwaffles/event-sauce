@@ -15,6 +15,7 @@ precheck_steps: &precheck_steps
     - run: cargo update
     - run: sudo apt install -qq linkchecker
     - run: rustup default ${RUST_VERSION:-stable}
+    - run: cargo install cargo-readme
     - run: rustup component add rustfmt
     - run: rustup toolchain add nightly
     - run: ./build.sh

@@ -2,6 +2,8 @@
 
 set -ex
 
+crates=("event-sauce" "storage-sqlx")
+
 cargo clean --doc
 
 cargo fmt --all -- --check
@@ -11,6 +13,16 @@ cargo test --release --all-features -- --test-threads=1
 cargo bench --no-run
 
 cargo +nightly doc --all-features
-linkchecker target/doc/event_sauce/index.html
-# linkchecker target/doc/event_sauce_derive/index.html
-linkchecker target/doc/event_sauce_storage_sqlx/index.html
+
+# Crate-specific checks
+for crate in ${crates[@]}; do
+    linkchecker target/doc/event_sauce/index.html
+
+    readme="target/check-${crate}-README.md"
+
+    pushd $crate
+    cargo readme --no-title --no-badges --no-indent-headings > "../$readme"
+    popd
+
+    diff "${crate}/README.md" "$readme"
+done
