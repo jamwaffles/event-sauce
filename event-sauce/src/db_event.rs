@@ -2,7 +2,6 @@
 
 use crate::{event::Event, EventData};
 use chrono::{DateTime, Utc};
-use postgres::Row;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
@@ -15,6 +14,7 @@ use uuid::Uuid;
 /// * The `data` field is now a generic [`serde_json::Value`] instead of a specialised,
 ///   application-specific struct. This maps to the Postgres `json` field type.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct DBEvent {
     /// Event ID
     pub id: Uuid,
@@ -85,25 +85,6 @@ impl<S: EventData> TryFrom<Event<S>> for DBEvent {
             created_at: other.created_at,
             purged_at: other.purged_at,
             data,
-        })
-    }
-}
-
-impl TryFrom<Row> for DBEvent {
-    type Error = postgres::error::Error;
-
-    fn try_from(row: Row) -> Result<Self, Self::Error> {
-        Ok(Self {
-            id: row.try_get("id")?,
-            sequence_number: row.try_get("sequence_number")?,
-            event_type: row.try_get("event_type")?,
-            entity_type: row.try_get("entity_type")?,
-            entity_id: row.try_get("entity_id")?,
-            session_id: row.try_get("session_id")?,
-            purger_id: row.try_get("purger_id")?,
-            created_at: row.try_get("created_at")?,
-            purged_at: row.try_get("purged_at")?,
-            data: row.try_get("data")?,
         })
     }
 }

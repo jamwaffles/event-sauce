@@ -50,25 +50,6 @@ where
     pub purged_at: Option<DateTime<Utc>>,
 }
 
-impl<D> Default for Event<D>
-where
-    D: EventData,
-{
-    fn default() -> Self {
-        Self {
-            id: Uuid::new_v4(),
-            event_type: D::event_type(),
-            entity_type: D::entity_type(),
-            entity_id: Uuid::new_v4(),
-            session_id: None,
-            purger_id: None,
-            data: None,
-            created_at: Utc::now(),
-            purged_at: None,
-        }
-    }
-}
-
 impl<S: EventData> TryFrom<DBEvent> for Event<S> {
     type Error = serde_json::Error;
 
@@ -131,7 +112,7 @@ impl<S: EventData> TryFrom<DBEvent> for Event<S> {
     ///    });
     /// ```
     ///
-    /// [`DBEvent`]: crate::event_store::DBEvent
+    /// [`DBEvent`]: crate::db_event::DBEvent
     fn try_from(other: DBEvent) -> Result<Event<S>, Self::Error> {
         let data: Option<S> = if let Some(d) = other.data {
             serde_json::from_value(d)?

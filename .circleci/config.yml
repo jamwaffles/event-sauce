@@ -1,7 +1,7 @@
 # Check that everything (tests, benches, etc) builds in std environments
 precheck_steps: &precheck_steps
   docker:
-    - image: circleci/rust:1.41.0
+    - image: circleci/rust:1.42.0
     - image: postgres:11-alpine
       environment:
         POSTGRES_USER: sauce
@@ -12,9 +12,10 @@ precheck_steps: &precheck_steps
     - restore_cache:
         key: v1-event-sauce-{{ .Environment.RUST_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "event-sauce/Cargo.toml" }}-{{ checksum "event-sauce-derive/Cargo.toml" }}
     - run: rustup self update
-    - run: sudo apt install -qq python-pip
-    - run: sudo pip install linkchecker
+    - run: cargo update
+    - run: sudo apt install -qq linkchecker
     - run: rustup default ${RUST_VERSION:-stable}
+    - run: cargo install cargo-readme
     - run: rustup component add rustfmt
     - run: rustup toolchain add nightly
     - run: ./build.sh
@@ -32,16 +33,11 @@ jobs:
     environment:
       - RUST_VERSION: 'beta'
     <<: *precheck_steps
-  precheck-nightly:
-    environment:
-      - RUST_VERSION: 'nightly'
-    <<: *precheck_steps
 
 build_jobs: &build_jobs
   jobs:
     - precheck-stable
     - precheck-beta
-    - precheck-nightly
 
 workflows:
   version: 2
