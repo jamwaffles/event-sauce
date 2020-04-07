@@ -66,7 +66,7 @@ impl StorageBackend for SqlxPgStore {
 #[async_trait::async_trait]
 impl Persistable<SqlxPgStore, DBEvent> for DBEvent {
     async fn persist(self, store: &SqlxPgStore) -> Result<Self, sqlx::Error> {
-        let saved = sqlx::query_as(
+        let saved: Self = sqlx::query_as(
             r#"insert into events (
                 id,
                 event_type,
@@ -98,6 +98,8 @@ impl Persistable<SqlxPgStore, DBEvent> for DBEvent {
         .bind(self.created_at)
         .fetch_one(&store.pool)
         .await?;
+
+        log::trace!("Persisted event {}: {:?}", saved.id, saved);
 
         Ok(saved)
     }
