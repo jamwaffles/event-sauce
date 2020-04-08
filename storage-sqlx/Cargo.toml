@@ -15,6 +15,7 @@ sqlx = {version = "0.3.2", features=["uuid", "chrono", "macros", "json"]}
 event-sauce = { version = "0.1.0", features = [ "sqlx" ] }
 async-trait = "0.1.29"
 uuid = "0.8.1"
+log = "0.4.8"
 
 [dev-dependencies]
 serde_derive = "1.0.105"
