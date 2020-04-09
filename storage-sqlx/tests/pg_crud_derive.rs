@@ -1,4 +1,3 @@
-use event_sauce::Entity;
 use event_sauce::{
     AggregateCreate, AggregateUpdate, CreateEntityBuilder, Event, EventData, Persistable,
     UpdateEntityBuilder,
@@ -10,41 +9,31 @@ use uuid::Uuid;
 
 const USERS_TABLE: &'static str = "crud_test_users";
 
-#[derive(serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow)]
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow, event_sauce_derive::Entity,
+)]
+#[event_sauce(entity_name = "users")]
 struct User {
     id: Uuid,
     name: String,
     email: String,
 }
 
-impl Entity for User {
-    const ENTITY_TYPE: &'static str = "users";
-}
-
-impl CreateEntityBuilder<UserCreated> for User {}
-impl UpdateEntityBuilder<UserEmailChanged> for User {}
-
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::CreateEventData,
+)]
+#[event_sauce(User)]
 struct UserCreated {
     name: String,
     email: String,
 }
 
-impl EventData for UserCreated {
-    type Entity = User;
-
-    const EVENT_TYPE: &'static str = "UserCreated";
-}
-
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::UpdateEventData,
+)]
+#[event_sauce(User)]
 struct UserEmailChanged {
     email: String,
-}
-
-impl EventData for UserEmailChanged {
-    type Entity = User;
-
-    const EVENT_TYPE: &'static str = "UserEmailChanged";
 }
 
 #[async_trait::async_trait]

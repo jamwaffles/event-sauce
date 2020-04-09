@@ -22,11 +22,8 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// An event's data payload
-pub trait EventData: Serialize + for<'de> Deserialize<'de> {
-    /// The type of this event as a `PascalCase` string
-    const EVENT_TYPE: &'static str;
-
+/// An entity to apply events to
+pub trait Entity {
     /// The type of this entity as a plural `underscore_case` string
     const ENTITY_TYPE: &'static str;
 
@@ -34,6 +31,15 @@ pub trait EventData: Serialize + for<'de> Deserialize<'de> {
     fn entity_type() -> String {
         Self::ENTITY_TYPE.to_string()
     }
+}
+
+/// An event's data payload
+pub trait EventData: Serialize + for<'de> Deserialize<'de> {
+    /// The type of this event as a `PascalCase` string
+    const EVENT_TYPE: &'static str;
+
+    /// The entity to bind this event to
+    type Entity: Entity;
 
     /// Get the event type/identifier in PascalCase like `UserCreated` or `PasswordChanged`
     fn event_type() -> String {
@@ -46,7 +52,7 @@ pub trait EventData: Serialize + for<'de> Deserialize<'de> {
             data: Some(self),
             id: Uuid::new_v4(),
             event_type: Self::event_type(),
-            entity_type: Self::entity_type(),
+            entity_type: Self::Entity::entity_type(),
             entity_id: Uuid::new_v4(),
             session_id,
             purger_id: None,
