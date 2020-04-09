@@ -36,6 +36,20 @@ struct UserEmailChanged {
     email: String,
 }
 
+/// Empty create event to test compilation works with unit structs
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::CreateEventData,
+)]
+#[event_sauce(User)]
+struct TestUnitStructCreate;
+
+/// Empty update event to test compilation works with unit structs
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::UpdateEventData,
+)]
+#[event_sauce(User)]
+struct TestUnitStructUpdate;
+
 #[async_trait::async_trait]
 impl Persistable<SqlxPgStore, User> for User {
     async fn persist(self, store: &SqlxPgStore) -> Result<Self, sqlx::Error> {
@@ -95,6 +109,29 @@ impl AggregateUpdate<UserEmailChanged> for User {
         };
 
         Ok(entity)
+    }
+}
+
+impl AggregateCreate<TestUnitStructCreate> for User {
+    type Error = &'static str;
+
+    fn try_aggregate_create(event: &Event<TestUnitStructCreate>) -> Result<Self, Self::Error> {
+        Ok(User {
+            id: event.entity_id,
+            name: String::new(),
+            email: String::new(),
+        })
+    }
+}
+
+impl AggregateUpdate<TestUnitStructUpdate> for User {
+    type Error = &'static str;
+
+    fn try_aggregate_update(
+        self,
+        _event: &Event<TestUnitStructUpdate>,
+    ) -> Result<Self, Self::Error> {
+        Ok(self)
     }
 }
 

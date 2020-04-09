@@ -1,11 +1,9 @@
 use proc_macro2::Span;
 use quote::quote;
-use syn::punctuated::Punctuated;
-use syn::token::Comma;
 use syn::DataStruct;
 use syn::FieldsNamed;
 use syn::Path;
-use syn::{Attribute, Data, DeriveInput, Field, Fields, Meta, NestedMeta};
+use syn::{Attribute, Data, DeriveInput, Fields, Meta, NestedMeta};
 
 /// Attempt to assign a value to a variable, failing if the variable is already populated.
 ///
@@ -71,7 +69,6 @@ fn parse_event_data_attributes(input: &[Attribute]) -> syn::Result<EventDataAttr
 
 fn expand_derive_event_data_struct(
     input: &DeriveInput,
-    _fields: &Punctuated<Field, Comma>,
     builder_type: BuilderType,
 ) -> syn::Result<proc_macro2::TokenStream> {
     let ident = &input.ident;
@@ -102,25 +99,17 @@ pub fn expand_derive_create_event_data(
 ) -> syn::Result<proc_macro2::TokenStream> {
     match &input.data {
         Data::Struct(DataStruct {
-            fields: Fields::Named(FieldsNamed { named, .. }),
+            fields: Fields::Named(FieldsNamed { .. }),
             ..
-        }) => expand_derive_event_data_struct(input, named, BuilderType::Create),
-
-        Data::Struct(DataStruct {
+        })
+        | Data::Struct(DataStruct {
             fields: Fields::Unnamed(_),
             ..
-        }) => Err(syn::Error::new_spanned(
-            input,
-            "tuple structs are not supported",
-        )),
-
-        Data::Struct(DataStruct {
+        })
+        | Data::Struct(DataStruct {
             fields: Fields::Unit,
             ..
-        }) => Err(syn::Error::new_spanned(
-            input,
-            "unit structs are not supported",
-        )),
+        }) => expand_derive_event_data_struct(input, BuilderType::Create),
 
         Data::Enum(_) => Err(syn::Error::new_spanned(input, "enums are not supported")),
 
@@ -133,25 +122,17 @@ pub fn expand_derive_update_event_data(
 ) -> syn::Result<proc_macro2::TokenStream> {
     match &input.data {
         Data::Struct(DataStruct {
-            fields: Fields::Named(FieldsNamed { named, .. }),
+            fields: Fields::Named(FieldsNamed { .. }),
             ..
-        }) => expand_derive_event_data_struct(input, named, BuilderType::Update),
-
-        Data::Struct(DataStruct {
+        })
+        | Data::Struct(DataStruct {
             fields: Fields::Unnamed(_),
             ..
-        }) => Err(syn::Error::new_spanned(
-            input,
-            "tuple structs are not supported",
-        )),
-
-        Data::Struct(DataStruct {
+        })
+        | Data::Struct(DataStruct {
             fields: Fields::Unit,
             ..
-        }) => Err(syn::Error::new_spanned(
-            input,
-            "unit structs are not supported",
-        )),
+        }) => expand_derive_event_data_struct(input, BuilderType::Update),
 
         Data::Enum(_) => Err(syn::Error::new_spanned(input, "enums are not supported")),
 
