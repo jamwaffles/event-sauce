@@ -1,22 +1,10 @@
-
 use proc_macro2::Span;
 use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::token::Comma;
 use syn::DataStruct;
 use syn::FieldsNamed;
-use syn::{
-    parse_quote, Attribute, Data, DeriveInput, Field, Fields, Lifetime, Lit, Meta, MetaNameValue,
-    NestedMeta, Variant,
-};
-
-macro_rules! assert_attribute {
-    ($e:expr, $err:expr, $input:expr) => {
-        if !$e {
-            return Err(syn::Error::new_spanned($input, $err));
-        }
-    };
-}
+use syn::{Attribute, Data, DeriveInput, Field, Fields, Lit, Meta, MetaNameValue, NestedMeta};
 
 macro_rules! try_set {
     ($i:ident, $v:expr, $t:expr) => {

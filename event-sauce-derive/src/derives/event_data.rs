@@ -1,4 +1,3 @@
-
 use proc_macro2::Span;
 use quote::quote;
 use syn::punctuated::Punctuated;
@@ -6,18 +5,7 @@ use syn::token::Comma;
 use syn::DataStruct;
 use syn::FieldsNamed;
 use syn::Path;
-use syn::{
-    parse_quote, Attribute, Data, DeriveInput, Field, Fields, Lifetime, Lit, Meta, MetaNameValue,
-    NestedMeta, Variant,
-};
-
-macro_rules! assert_attribute {
-    ($e:expr, $err:expr, $input:expr) => {
-        if !$e {
-            return Err(syn::Error::new_spanned($input, $err));
-        }
-    };
-}
+use syn::{Attribute, Data, DeriveInput, Field, Fields, Meta, NestedMeta};
 
 /// Attempt to assign a value to a variable, failing if the variable is already populated.
 ///
