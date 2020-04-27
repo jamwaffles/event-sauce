@@ -1,6 +1,5 @@
-use event_sauce::Entity;
 use event_sauce::{
-    AggregateCreate, AggregateUpdate, CreateEntityBuilder, Event, EventData, Persistable,
+    AggregateCreate, AggregateUpdate, CreateEntityBuilder, Entity, Event, EventData, Persistable,
     UpdateEntityBuilder,
 };
 // use event_sauce::UpdateEntity;

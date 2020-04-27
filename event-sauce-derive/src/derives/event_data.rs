@@ -1,9 +1,6 @@
 use proc_macro2::Span;
 use quote::quote;
-use syn::DataStruct;
-use syn::FieldsNamed;
-use syn::Path;
-use syn::{Attribute, Data, DeriveInput, Fields, Meta, NestedMeta};
+use syn::{Attribute, Data, DataStruct, DeriveInput, Fields, FieldsNamed, Meta, NestedMeta, Path};
 
 /// Attempt to assign a value to a variable, failing if the variable is already populated.
 ///

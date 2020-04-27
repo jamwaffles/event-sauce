@@ -1,7 +1,6 @@
 //! Event builder
 
-use crate::Event;
-use crate::EventData;
+use crate::{Event, EventData};
 use uuid::Uuid;
 
 /// Event builder
@@ -15,7 +14,7 @@ use uuid::Uuid;
 /// outside the event instead.
 ///
 /// ```rust
-/// use event_sauce::{EventBuilder, Event, AggregateCreate};
+/// use event_sauce::{AggregateCreate, Event, EventBuilder};
 /// use uuid::Uuid;
 ///
 /// #[derive(event_sauce_derive::Entity)]
