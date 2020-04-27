@@ -11,11 +11,13 @@
 
 mod db_event;
 mod event;
+mod event_builder;
 mod triggers;
 
 pub use crate::{
     db_event::DBEvent,
     event::Event,
+    event_builder::EventBuilder,
     triggers::{OnCreated, OnUpdated},
 };
 use chrono::Utc;
