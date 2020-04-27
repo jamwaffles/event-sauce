@@ -73,7 +73,7 @@ fn parse_entity_attributes(input: &[Attribute]) -> syn::Result<EntityAttributes>
     let entity_name = entity_name.ok_or_else(|| {
         syn::Error::new(
             Span::call_site(),
-            "Attribute entity_name is required, e.g. #[event_sauce(entity_name = \"users\")",
+            "Attribute entity_name is required, e.g. #[event_sauce(entity_name = \"users\")]",
         )
     })?;
 
