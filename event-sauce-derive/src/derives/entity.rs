@@ -1,10 +1,9 @@
 use proc_macro2::Span;
 use quote::quote;
-use syn::punctuated::Punctuated;
-use syn::token::Comma;
-use syn::DataStruct;
-use syn::FieldsNamed;
-use syn::{Attribute, Data, DeriveInput, Field, Fields, Lit, Meta, MetaNameValue, NestedMeta};
+use syn::{
+    punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field, Fields,
+    FieldsNamed, Lit, Meta, MetaNameValue, NestedMeta,
+};
 
 macro_rules! try_set {
     ($i:ident, $v:expr, $t:expr) => {
