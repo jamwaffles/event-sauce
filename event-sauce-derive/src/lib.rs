@@ -33,3 +33,13 @@ pub fn derive_update_event_data(input: TokenStream) -> TokenStream {
         Err(e) => e.to_compile_error().into(),
     }
 }
+
+#[proc_macro_derive(DeleteEventData, attributes(event_sauce))]
+pub fn derive_delete_event_data(input: TokenStream) -> TokenStream {
+    let input = syn::parse_macro_input!(input as syn::DeriveInput);
+
+    match derives::event_data::expand_derive_delete_event_data(&input) {
+        Ok(ts) => ts.into(),
+        Err(e) => e.to_compile_error().into(),
+    }
+}

@@ -76,6 +76,19 @@ where
     async fn persist(self, store: &Store) -> Result<Out, Store::Error>;
 }
 
+/// Implemented for all entities that can be removed or otherwise marked as deleted in the database
+#[async_trait::async_trait]
+pub trait Deletable<Store>
+where
+    Store: StorageBackend,
+{
+    /// Delete an entity
+    ///
+    /// Implementations of this method may either remove the entity from the database entirely, set
+    /// a `deleted_at` column to the current time, or something else.
+    async fn delete(self, store: &Store) -> Result<(), Store::Error>;
+}
+
 /// Add the ability to create a new entity from a given event
 pub trait AggregateCreate<ED>: Sized
 where
@@ -98,6 +111,29 @@ where
 
     /// Attempt to apply the passed event to this entity
     fn try_aggregate_update(self, event: &Event<ED>) -> Result<Self, Self::Error>;
+}
+
+/// Add the ability to delete an entity
+pub trait AggregateDelete<ED>: Sized
+where
+    ED: EventData,
+{
+    /// The error type to return when the entity could not be updated
+    type Error;
+
+    /// Attempt to apply the passed event to this entity
+    ///
+    /// The default implementation of this method is a noop and returns `Ok(self)`.
+    ///
+    /// If the entity's implementation of [`Deletable`] removes it from the database entirely, the
+    /// implementation of this method should not update `self` and should instead simply return
+    /// `Ok(self)` as any updates will not be applied, and will be lost on deletion.
+    ///
+    /// If the entity's [`Deletable`] implementation sets a deleted flag or does not otherwise
+    /// delete the entire row, use this method to update the entity.
+    fn try_aggregate_delete(self, _event: &Event<ED>) -> Result<Self, Self::Error> {
+        Ok(self)
+    }
 }
 
 /// A wrapper trait around [`AggregateCreate`] to handle event-sauce integration boilerplate
@@ -126,6 +162,19 @@ where
     }
 }
 
+/// A wrapper trait around [`AggregateDelete`] to handle event-sauce integration boilerplate
+pub trait DeleteEntityBuilder<ED>: AggregateDelete<ED>
+where
+    ED: EventData,
+{
+    /// Mark the entity for deletion
+    fn try_delete(self, event: Event<ED>) -> Result<DeleteBuilder<Self, ED>, Self::Error> {
+        let entity = self.try_aggregate_delete(&event)?;
+
+        Ok(DeleteBuilder::new(entity, event))
+    }
+}
+
 /// Implemented for all backend storage providers (Postgres, etc)
 pub trait StorageBackend {
     /// The type of error returned from the storage backend
@@ -143,6 +192,25 @@ pub struct StorageBuilder<Ent, ED: EventData> {
 }
 
 impl<ED, Ent> StorageBuilder<Ent, ED>
+where
+    ED: EventData,
+{
+    /// Create a new entity/event pair
+    pub fn new(entity: Ent, event: Event<ED>) -> Self {
+        Self { event, entity }
+    }
+}
+
+/// A wrapper around a tuple of event and entity, used to delete an entity in the database
+pub struct DeleteBuilder<Ent, ED: EventData> {
+    /// Deletion event to persist
+    pub event: Event<ED>,
+
+    /// Entity to delete
+    pub entity: Ent,
+}
+
+impl<ED, Ent> DeleteBuilder<Ent, ED>
 where
     ED: EventData,
 {
