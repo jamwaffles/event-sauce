@@ -12,7 +12,9 @@
 #![deny(missing_docs)]
 #![deny(intra_doc_link_resolution_failure)]
 
-use event_sauce::{DBEvent, EventData, Persistable, StorageBackend, StorageBuilder};
+use event_sauce::{
+    DBEvent, Deletable, DeleteBuilder, EventData, Persistable, StorageBackend, StorageBuilder,
+};
 use sqlx::{postgres::PgQueryAs, PgPool};
 use std::convert::TryInto;
 
@@ -121,5 +123,26 @@ where
         db_event.persist(&store).await?;
 
         self.entity.persist(&store).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<Ent, ED> Deletable<SqlxPgStore> for DeleteBuilder<Ent, ED>
+where
+    ED: EventData + std::marker::Send,
+    Ent: Deletable<SqlxPgStore> + std::marker::Send,
+{
+    async fn delete(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
+        // TODO: Enum error type to handle this unwrap
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
+
+        db_event.persist(&store).await?;
+
+        println!("Event persisted");
+
+        self.entity.delete(&store).await
     }
 }

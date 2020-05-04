@@ -1,6 +1,6 @@
 use event_sauce::{
-    AggregateCreate, AggregateUpdate, CreateEntityBuilder, Entity, Event, EventData, Persistable,
-    UpdateEntityBuilder,
+    AggregateCreate, AggregateUpdate, CreateEntityBuilder, Deletable, Entity, Event, EventData,
+    Persistable, UpdateEntityBuilder,
 };
 // use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx::SqlxPgStore;
@@ -70,6 +70,18 @@ impl Persistable<SqlxPgStore, User> for User {
             .await?;
 
         Ok(new)
+    }
+}
+
+#[async_trait::async_trait]
+impl Deletable<SqlxPgStore> for User {
+    async fn delete(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
+        sqlx::query(&format!("delete from {} where id = $1", USERS_TABLE))
+            .bind(self.id)
+            .execute(&store.pool)
+            .await?;
+
+        Ok(())
     }
 }
 

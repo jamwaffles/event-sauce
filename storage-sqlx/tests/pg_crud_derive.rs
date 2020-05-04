@@ -1,6 +1,6 @@
 use event_sauce::{
-    AggregateCreate, AggregateUpdate, CreateEntityBuilder, Event, EventData, Persistable,
-    UpdateEntityBuilder,
+    AggregateCreate, AggregateDelete, AggregateUpdate, CreateEntityBuilder, Deletable,
+    DeleteEntityBuilder, Event, EventData, Persistable, UpdateEntityBuilder,
 };
 // use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx::SqlxPgStore;
@@ -50,6 +50,12 @@ struct TestUnitStructCreate;
 #[event_sauce(User)]
 struct TestUnitStructUpdate;
 
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::DeleteEventData,
+)]
+#[event_sauce(User)]
+struct UserDeleted;
+
 #[async_trait::async_trait]
 impl Persistable<SqlxPgStore, User> for User {
     async fn persist(self, store: &SqlxPgStore) -> Result<Self, sqlx::Error> {
@@ -74,6 +80,18 @@ impl Persistable<SqlxPgStore, User> for User {
             .await?;
 
         Ok(new)
+    }
+}
+
+#[async_trait::async_trait]
+impl Deletable<SqlxPgStore> for User {
+    async fn delete(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
+        sqlx::query(&format!("delete from {} where id = $1", USERS_TABLE))
+            .bind(self.id)
+            .execute(&store.pool)
+            .await?;
+
+        Ok(())
     }
 }
 
@@ -131,6 +149,17 @@ impl AggregateUpdate<TestUnitStructUpdate> for User {
         self,
         _event: &Event<TestUnitStructUpdate>,
     ) -> Result<Self, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl AggregateDelete<UserDeleted> for User {
+    type Error = &'static str;
+
+    fn try_aggregate_delete(self, _event: &Event<UserDeleted>) -> Result<Self, Self::Error> {
+        // No changes are made to the object as the `delete` impl completely removes it. If the
+        // delete behaviour was e.g. to add a "deleted_at" date flag, the code here should update
+        // the entity.
         Ok(self)
     }
 }
@@ -212,6 +241,55 @@ async fn update() -> Result<(), sqlx::Error> {
         .expect("Failed to persist");
 
     assert_eq!(user.email, "beans@bob.by".to_string());
+
+    Ok(())
+}
+
+#[async_std::test]
+async fn delete() -> Result<(), sqlx::Error> {
+    let store = connect().await?;
+
+    let user = User::try_create(
+        UserCreated {
+            name: "I should be deleted".to_string(),
+            email: "bobby@bea.ns".to_string(),
+        }
+        .into_event(None),
+    )
+    .expect("Failed to create User from UserCreated event")
+    .persist(&store)
+    .await
+    .expect("Failed to persist");
+
+    let id = user.id;
+
+    let (found,): (i64,) = sqlx::query_as(&format!(
+        "select count(*) from {} where id = $1",
+        USERS_TABLE
+    ))
+    .bind(id)
+    .fetch_one(&store.pool)
+    .await?;
+
+    assert_eq!(found, 1);
+
+    assert_eq!(user.name, "I should be deleted".to_string());
+    assert_eq!(user.email, "bobby@bea.ns".to_string());
+
+    user.try_delete(UserDeleted.into_event(None))
+        .expect("Failed to create deletion event")
+        .delete(&store)
+        .await?;
+
+    let (found,): (i64,) = sqlx::query_as(&format!(
+        "select count(*) from {} where id = $1",
+        USERS_TABLE
+    ))
+    .bind(id)
+    .fetch_one(&store.pool)
+    .await?;
+
+    assert_eq!(found, 0);
 
     Ok(())
 }

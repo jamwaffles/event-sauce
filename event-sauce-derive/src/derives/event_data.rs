@@ -23,6 +23,7 @@ macro_rules! fail {
 enum BuilderType {
     Create,
     Update,
+    Delete,
 }
 
 struct EventDataAttributes {
@@ -78,6 +79,7 @@ fn expand_derive_event_data_struct(
     let builder_impl = match builder_type {
         BuilderType::Create => quote!(event_sauce::CreateEntityBuilder),
         BuilderType::Update => quote!(event_sauce::UpdateEntityBuilder),
+        BuilderType::Delete => quote!(event_sauce::DeleteEntityBuilder),
     };
 
     Ok(quote!(
@@ -130,6 +132,29 @@ pub fn expand_derive_update_event_data(
             fields: Fields::Unit,
             ..
         }) => expand_derive_event_data_struct(input, BuilderType::Update),
+
+        Data::Enum(_) => Err(syn::Error::new_spanned(input, "enums are not supported")),
+
+        Data::Union(_) => Err(syn::Error::new_spanned(input, "unions are not supported")),
+    }
+}
+
+pub fn expand_derive_delete_event_data(
+    input: &DeriveInput,
+) -> syn::Result<proc_macro2::TokenStream> {
+    match &input.data {
+        Data::Struct(DataStruct {
+            fields: Fields::Named(FieldsNamed { .. }),
+            ..
+        })
+        | Data::Struct(DataStruct {
+            fields: Fields::Unnamed(_),
+            ..
+        })
+        | Data::Struct(DataStruct {
+            fields: Fields::Unit,
+            ..
+        }) => expand_derive_event_data_struct(input, BuilderType::Delete),
 
         Data::Enum(_) => Err(syn::Error::new_spanned(input, "enums are not supported")),
 
