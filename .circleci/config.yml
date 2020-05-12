@@ -10,7 +10,7 @@ precheck_steps: &precheck_steps
   steps:
     - checkout
     - restore_cache:
-        key: v1-event-sauce-{{ .Environment.RUST_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "event-sauce/Cargo.toml" }}-{{ checksum "event-sauce-derive/Cargo.toml" }}
+        key: v2-event-sauce-{{ .Environment.RUST_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "event-sauce/Cargo.toml" }}-{{ checksum "event-sauce-derive/Cargo.toml" }}
     - run: rustup self update
     - run: cargo update
     - run: sudo apt install -qq linkchecker
@@ -20,10 +20,10 @@ precheck_steps: &precheck_steps
     - run: rustup toolchain add nightly
     - run: ./build.sh
     - save_cache:
-        key: v1-event-sauce-{{ .Environment.RUST_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "event-sauce/Cargo.toml" }}-{{ checksum "event-sauce-derive/Cargo.toml" }}
+        key: v2-event-sauce-{{ .Environment.RUST_VERSION }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "event-sauce/Cargo.toml" }}-{{ checksum "event-sauce-derive/Cargo.toml" }}
         paths:
           - ./target
-          - /home/ubuntu/.cargo
+          - /usr/local/cargo/registry
 
 version: 2
 jobs:
