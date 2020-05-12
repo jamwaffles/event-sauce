@@ -14,6 +14,7 @@ const USERS_TABLE: &'static str = "crud_test_users";
 )]
 #[event_sauce(entity_name = "users")]
 struct User {
+    #[event_sauce(id)]
     id: Uuid,
     name: String,
     email: String,

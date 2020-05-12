@@ -1,8 +1,9 @@
 use proc_macro2::Span;
 use quote::quote;
+use syn::MetaList;
 use syn::{
     punctuated::Punctuated, token::Comma, Attribute, Data, DataStruct, DeriveInput, Field, Fields,
-    FieldsNamed, Lit, Meta, MetaNameValue, NestedMeta,
+    FieldsNamed, Ident, Lit, Meta, MetaNameValue, NestedMeta,
 };
 
 macro_rules! try_set {
@@ -79,19 +80,55 @@ fn parse_entity_attributes(input: &[Attribute]) -> syn::Result<EntityAttributes>
     Ok(EntityAttributes { entity_name })
 }
 
+/// Return the name of the field which is to become the entity ID field
+fn find_entity_id_field(fields: &Punctuated<Field, Comma>) -> syn::Result<Ident> {
+    // Find field with an attribute matching `#[event_sauce(id)]`
+    let field = fields.iter().find(|field| {
+        field
+            .attrs
+            .iter()
+            .map(|attr| attr.parse_meta().expect("Invalid field attribute provided"))
+            .any(|meta| match meta {
+                Meta::List(MetaList { nested, .. }) if nested.len() == 1 => nested
+                    .first()
+                    .map(|nested_meta| match nested_meta {
+                        NestedMeta::Meta(Meta::Path(path)) if path.is_ident("id") => true,
+                        _ => false,
+                    })
+                    .unwrap_or(false),
+                _ => false,
+            })
+    });
+
+    if let Some(field_ident) = field.and_then(|f| f.ident.as_ref()) {
+        Ok(field_ident.clone())
+    } else {
+        fail!(
+            fields,
+            "the #[event_sauce(id)] attribute is required on the ID field of the entity"
+        )
+    }
+}
+
 fn expand_derive_entity_struct(
     input: &DeriveInput,
-    _fields: &Punctuated<Field, Comma>,
+    fields: &Punctuated<Field, Comma>,
 ) -> syn::Result<proc_macro2::TokenStream> {
     let ident = &input.ident;
 
     let EntityAttributes { entity_name } = parse_entity_attributes(&input.attrs)?;
+
+    let entity_id_field = find_entity_id_field(&fields)?;
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     Ok(quote!(
         impl #impl_generics event_sauce::Entity for #ident #ty_generics #where_clause {
             const ENTITY_TYPE: &'static str = #entity_name;
+
+            fn entity_id(&self) -> Uuid {
+                self.#entity_id_field
+            }
         }
     ))
 }

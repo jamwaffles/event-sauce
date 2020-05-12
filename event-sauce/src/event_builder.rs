@@ -20,14 +20,19 @@ use uuid::Uuid;
 /// #[derive(event_sauce_derive::Entity)]
 /// #[event_sauce(entity_name = "users")]
 /// struct User {
+///     #[event_sauce(id)]
+///     id: Uuid,
+///
 ///     // ...
 /// }
 ///
 /// impl AggregateCreate<UserCreated> for User {
 ///     type Error = &'static str;
 ///
-///     fn try_aggregate_create(_event: &Event<UserCreated>) -> Result<Self, Self::Error> {
+///     fn try_aggregate_create(event: &Event<UserCreated>) -> Result<Self, Self::Error> {
 ///         Ok(User {
+///             id: event.entity_id,
+///
 ///             // ...
 ///         })
 ///     }
