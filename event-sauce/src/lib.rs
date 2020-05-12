@@ -33,6 +33,9 @@ pub trait Entity {
     fn entity_type() -> String {
         Self::ENTITY_TYPE.to_string()
     }
+
+    /// Get the ID of this entity
+    fn entity_id(&self) -> Uuid;
 }
 
 /// An event's data payload
@@ -150,12 +153,16 @@ where
 }
 
 /// A wrapper trait around [`AggregateUpdate`] to handle event-sauce integration boilerplate
-pub trait UpdateEntityBuilder<ED>: AggregateUpdate<ED>
+pub trait UpdateEntityBuilder<ED>: AggregateUpdate<ED> + Entity
 where
     ED: EventData,
 {
     /// Update the entity with an event
     fn try_update(self, event: Event<ED>) -> Result<StorageBuilder<Self, ED>, Self::Error> {
+        let mut event = event;
+
+        event.entity_id = self.entity_id();
+
         let entity = self.try_aggregate_update(&event)?;
 
         Ok(StorageBuilder::new(entity, event))

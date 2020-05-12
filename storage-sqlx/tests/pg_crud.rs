@@ -18,6 +18,10 @@ struct User {
 
 impl Entity for User {
     const ENTITY_TYPE: &'static str = "users";
+
+    fn entity_id(&self) -> Uuid {
+        self.id
+    }
 }
 
 impl CreateEntityBuilder<UserCreated> for User {}
