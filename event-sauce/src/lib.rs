@@ -12,15 +12,15 @@
 mod db_event;
 mod event;
 mod event_builder;
+pub mod prelude;
 mod triggers;
 
 pub use crate::{
     db_event::DBEvent,
     event::Event,
-    event_builder::EventBuilder,
+    event_builder::{CreateEventBuilder, DeleteEventBuilder, EventBuilder, UpdateEventBuilder},
     triggers::{OnCreated, OnUpdated},
 };
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -46,24 +46,25 @@ pub trait EventData: Serialize + for<'de> Deserialize<'de> {
     /// The entity to bind this event to
     type Entity: Entity;
 
+    /// The type of builder this event can be used with
+    type Builder: EventBuilder<Self>;
+
     /// Get the event type/identifier in PascalCase like `UserCreated` or `PasswordChanged`
     fn event_type() -> String {
         Self::EVENT_TYPE.to_string()
     }
 
-    /// Wrap the payload in an [`Event`] with default values for other fields
-    fn into_event(self, session_id: Option<Uuid>) -> Event<Self> {
-        Event {
-            data: Some(self),
-            id: Uuid::new_v4(),
-            event_type: Self::event_type(),
-            entity_type: Self::Entity::entity_type(),
-            entity_id: Uuid::new_v4(),
-            session_id,
-            purger_id: None,
-            created_at: Utc::now(),
-            purged_at: None,
-        }
+    /// Convert the event into a builder with a given session ID
+    ///
+    /// This is a convenience method to shorten `Event {}.into_builder().session_id(id)` to
+    /// `Event {}.with_session_id(id)`.
+    fn with_session_id(self, session_id: Uuid) -> Self::Builder {
+        Self::Builder::new(self).session_id(session_id)
+    }
+
+    /// Convert the event into a builder
+    fn into_builder(self) -> Self::Builder {
+        Self::Builder::new(self)
     }
 }
 
@@ -145,7 +146,12 @@ where
     ED: EventData,
 {
     /// Create a new entity with an event
-    fn try_create(event: Event<ED>) -> Result<StorageBuilder<Self, ED>, Self::Error> {
+    fn try_create<B>(builder: B) -> Result<StorageBuilder<Self, ED>, Self::Error>
+    where
+        B: Into<CreateEventBuilder<ED>>,
+    {
+        let event = builder.into().build();
+
         let entity = Self::try_aggregate_create(&event)?;
 
         Ok(StorageBuilder::new(entity, event))
@@ -158,10 +164,11 @@ where
     ED: EventData,
 {
     /// Update the entity with an event
-    fn try_update(self, event: Event<ED>) -> Result<StorageBuilder<Self, ED>, Self::Error> {
-        let mut event = event;
-
-        event.entity_id = self.entity_id();
+    fn try_update<B>(self, builder: B) -> Result<StorageBuilder<Self, ED>, Self::Error>
+    where
+        B: Into<UpdateEventBuilder<ED>>,
+    {
+        let event = builder.into().build_with_entity_id(self.entity_id());
 
         let entity = self.try_aggregate_update(&event)?;
 
@@ -170,12 +177,17 @@ where
 }
 
 /// A wrapper trait around [`AggregateDelete`] to handle event-sauce integration boilerplate
-pub trait DeleteEntityBuilder<ED>: AggregateDelete<ED>
+pub trait DeleteEntityBuilder<ED>: AggregateDelete<ED> + Entity
 where
     ED: EventData,
 {
     /// Mark the entity for deletion
-    fn try_delete(self, event: Event<ED>) -> Result<DeleteBuilder<Self, ED>, Self::Error> {
+    fn try_delete<B>(self, builder: B) -> Result<DeleteBuilder<Self, ED>, Self::Error>
+    where
+        B: Into<DeleteEventBuilder<ED>>,
+    {
+        let event = builder.into().build_with_entity_id(self.entity_id());
+
         let entity = self.try_aggregate_delete(&event)?;
 
         Ok(DeleteBuilder::new(entity, event))

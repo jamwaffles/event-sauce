@@ -1,6 +1,5 @@
 use event_sauce::{
-    AggregateCreate, AggregateDelete, AggregateUpdate, CreateEntityBuilder, Deletable,
-    DeleteEntityBuilder, Event, EventData, Persistable, UpdateEntityBuilder,
+    prelude::*, AggregateCreate, AggregateDelete, AggregateUpdate, Deletable, Event, Persistable,
 };
 // use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx::SqlxPgStore;
@@ -193,13 +192,10 @@ async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
 async fn create() -> Result<(), sqlx::Error> {
     let store = connect().await?;
 
-    let user = User::try_create(
-        UserCreated {
-            name: "Bobby Beans".to_string(),
-            email: "bobby@bea.ns".to_string(),
-        }
-        .into_event(None),
-    )
+    let user = User::try_create(UserCreated {
+        name: "Bobby Beans".to_string(),
+        email: "bobby@bea.ns".to_string(),
+    })
     .expect("Failed to create User from UserCreated event")
     .persist(&store)
     .await
@@ -212,17 +208,53 @@ async fn create() -> Result<(), sqlx::Error> {
 }
 
 #[async_std::test]
-async fn update() -> Result<(), sqlx::Error> {
+async fn create_with_custom_entity_id() -> Result<(), sqlx::Error> {
     let store = connect().await?;
 
-    // Create user
-    let user = User::try_create(
+    let entity_id = Uuid::new_v4();
+
+    User::try_create(
         UserCreated {
             name: "Bobby Beans".to_string(),
             email: "bobby@bea.ns".to_string(),
         }
-        .into_event(None),
+        .into_builder()
+        .entity_id(entity_id),
     )
+    .expect("Failed to create User from UserCreated event")
+    .persist(&store)
+    .await
+    .expect("Failed to persist");
+
+    let (found,): (i64,) = sqlx::query_as(&format!(
+        "select count(*) from {} where id = $1",
+        USERS_TABLE
+    ))
+    .bind(entity_id)
+    .fetch_one(&store.pool)
+    .await?;
+
+    assert_eq!(found, 1);
+
+    let (found,): (i64,) = sqlx::query_as("select count(*) from events where entity_id = $1")
+        .bind(entity_id)
+        .fetch_one(&store.pool)
+        .await?;
+
+    assert_eq!(found, 1);
+
+    Ok(())
+}
+
+#[async_std::test]
+async fn update() -> Result<(), sqlx::Error> {
+    let store = connect().await?;
+
+    // Create user
+    let user = User::try_create(UserCreated {
+        name: "Bobby Beans".to_string(),
+        email: "bobby@bea.ns".to_string(),
+    })
     .expect("Failed to create User from UserCreated event")
     .persist(&store)
     .await
@@ -230,12 +262,9 @@ async fn update() -> Result<(), sqlx::Error> {
 
     // Update user's email address
     let user = user
-        .try_update(
-            UserEmailChanged {
-                email: "beans@bob.by".to_string(),
-            }
-            .into_event(None),
-        )
+        .try_update(UserEmailChanged {
+            email: "beans@bob.by".to_string(),
+        })
         .expect("Failed to update User from UserEmailChanged event")
         .persist(&store)
         .await
@@ -250,13 +279,10 @@ async fn update() -> Result<(), sqlx::Error> {
 async fn delete() -> Result<(), sqlx::Error> {
     let store = connect().await?;
 
-    let user = User::try_create(
-        UserCreated {
-            name: "I should be deleted".to_string(),
-            email: "bobby@bea.ns".to_string(),
-        }
-        .into_event(None),
-    )
+    let user = User::try_create(UserCreated {
+        name: "I should be deleted".to_string(),
+        email: "bobby@bea.ns".to_string(),
+    })
     .expect("Failed to create User from UserCreated event")
     .persist(&store)
     .await
@@ -277,7 +303,7 @@ async fn delete() -> Result<(), sqlx::Error> {
     assert_eq!(user.name, "I should be deleted".to_string());
     assert_eq!(user.email, "bobby@bea.ns".to_string());
 
-    user.try_delete(UserDeleted.into_event(None))
+    user.try_delete(UserDeleted)
         .expect("Failed to create deletion event")
         .delete(&store)
         .await?;
@@ -291,6 +317,14 @@ async fn delete() -> Result<(), sqlx::Error> {
     .await?;
 
     assert_eq!(found, 0);
+
+    // There should be two events with the entity ID of the user
+    let (found,): (i64,) = sqlx::query_as("select count(*) from events where entity_id = $1")
+        .bind(id)
+        .fetch_one(&store.pool)
+        .await?;
+
+    assert_eq!(found, 2);
 
     Ok(())
 }

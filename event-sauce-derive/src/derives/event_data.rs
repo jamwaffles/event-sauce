@@ -76,15 +76,26 @@ fn expand_derive_event_data_struct(
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let builder_impl = match builder_type {
-        BuilderType::Create => quote!(event_sauce::CreateEntityBuilder),
-        BuilderType::Update => quote!(event_sauce::UpdateEntityBuilder),
-        BuilderType::Delete => quote!(event_sauce::DeleteEntityBuilder),
+    let (builder_impl, event_builder) = match builder_type {
+        BuilderType::Create => (
+            quote!(event_sauce::CreateEntityBuilder),
+            quote!(event_sauce::CreateEventBuilder),
+        ),
+        BuilderType::Update => (
+            quote!(event_sauce::UpdateEntityBuilder),
+            quote!(event_sauce::UpdateEventBuilder),
+        ),
+        BuilderType::Delete => (
+            quote!(event_sauce::DeleteEntityBuilder),
+            quote!(event_sauce::DeleteEventBuilder),
+        ),
     };
 
     Ok(quote!(
         impl #impl_generics event_sauce::EventData for #ident #ty_generics #where_clause {
             type Entity = #entity;
+
+            type Builder = #event_builder <#ident>;
 
             const EVENT_TYPE: &'static str = #ident_string;
         }

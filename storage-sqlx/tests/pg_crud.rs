@@ -1,6 +1,6 @@
 use event_sauce::{
-    AggregateCreate, AggregateUpdate, CreateEntityBuilder, Deletable, Entity, Event, EventData,
-    Persistable, UpdateEntityBuilder,
+    prelude::*, AggregateCreate, AggregateUpdate, CreateEventBuilder, Deletable, Entity, Event,
+    EventData, Persistable, UpdateEventBuilder,
 };
 // use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx::SqlxPgStore;
@@ -35,6 +35,7 @@ struct UserCreated {
 
 impl EventData for UserCreated {
     type Entity = User;
+    type Builder = CreateEventBuilder<Self>;
 
     const EVENT_TYPE: &'static str = "UserCreated";
 }
@@ -46,6 +47,7 @@ struct UserEmailChanged {
 
 impl EventData for UserEmailChanged {
     type Entity = User;
+    type Builder = UpdateEventBuilder<Self>;
 
     const EVENT_TYPE: &'static str = "UserEmailChanged";
 }
@@ -152,13 +154,10 @@ async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
 async fn create() -> Result<(), sqlx::Error> {
     let store = connect().await?;
 
-    let user = User::try_create(
-        UserCreated {
-            name: "Bobby Beans".to_string(),
-            email: "bobby@bea.ns".to_string(),
-        }
-        .into_event(None),
-    )
+    let user = User::try_create(UserCreated {
+        name: "Bobby Beans".to_string(),
+        email: "bobby@bea.ns".to_string(),
+    })
     .expect("Failed to create User from UserCreated event")
     .persist(&store)
     .await
@@ -175,13 +174,10 @@ async fn update() -> Result<(), sqlx::Error> {
     let store = connect().await?;
 
     // Create user
-    let user = User::try_create(
-        UserCreated {
-            name: "Bobby Beans".to_string(),
-            email: "bobby@bea.ns".to_string(),
-        }
-        .into_event(None),
-    )
+    let user = User::try_create(UserCreated {
+        name: "Bobby Beans".to_string(),
+        email: "bobby@bea.ns".to_string(),
+    })
     .expect("Failed to create User from UserCreated event")
     .persist(&store)
     .await
@@ -189,12 +185,9 @@ async fn update() -> Result<(), sqlx::Error> {
 
     // Update user's email address
     let user = user
-        .try_update(
-            UserEmailChanged {
-                email: "beans@bob.by".to_string(),
-            }
-            .into_event(None),
-        )
+        .try_update(UserEmailChanged {
+            email: "beans@bob.by".to_string(),
+        })
         .expect("Failed to update User from UserEmailChanged event")
         .persist(&store)
         .await
