@@ -19,6 +19,7 @@ use sqlx::{postgres::PgQueryAs, PgPool};
 use std::convert::TryInto;
 
 /// [sqlx](https://docs.rs/sqlx)-based Postgres backing store
+#[derive(Debug, Clone)]
 pub struct SqlxPgStore {
     /// sqlx [`PgPool`](sqlx::PgPool) to commnicate with the database
     pub pool: PgPool,
