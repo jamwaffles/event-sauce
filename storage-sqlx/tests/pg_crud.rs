@@ -2,12 +2,13 @@ use event_sauce::{
     prelude::*, AggregateCreate, AggregateUpdate, CreateEventBuilder, Deletable, Entity, Event,
     EventData, Persistable, UpdateEventBuilder,
 };
+use event_sauce_storage_sqlx::SqlxPgStoreTransaction;
 // use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx::SqlxPgStore;
 use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
-const USERS_TABLE: &'static str = "crud_test_users";
+const USERS_TABLE: &str = "crud_test_users";
 
 #[derive(serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow)]
 struct User {
@@ -53,8 +54,8 @@ impl EventData for UserEmailChanged {
 }
 
 #[async_trait::async_trait]
-impl Persistable<SqlxPgStore, User> for User {
-    async fn persist(self, store: &SqlxPgStore) -> Result<Self, sqlx::Error> {
+impl Persistable<SqlxPgStoreTransaction, User> for User {
+    async fn persist(self, tx: &mut SqlxPgStoreTransaction) -> Result<Self, sqlx::Error> {
         let blah = format!(
             "insert into {}
                     (id, name, email)
@@ -72,7 +73,7 @@ impl Persistable<SqlxPgStore, User> for User {
             .bind(self.id)
             .bind(self.name)
             .bind(self.email)
-            .fetch_one(&store.pool)
+            .fetch_one(tx.get())
             .await?;
 
         Ok(new)
@@ -80,11 +81,11 @@ impl Persistable<SqlxPgStore, User> for User {
 }
 
 #[async_trait::async_trait]
-impl Deletable<SqlxPgStore> for User {
-    async fn delete(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
+impl Deletable<SqlxPgStoreTransaction> for User {
+    async fn delete(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
         sqlx::query(&format!("delete from {} where id = $1", USERS_TABLE))
             .bind(self.id)
-            .execute(&store.pool)
+            .execute(tx.get())
             .await?;
 
         Ok(())
@@ -152,14 +153,14 @@ async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
 
 #[async_std::test]
 async fn create() -> Result<(), sqlx::Error> {
-    let store = connect().await?;
+    let mut store = connect().await?;
 
     let user = User::try_create(UserCreated {
         name: "Bobby Beans".to_string(),
         email: "bobby@bea.ns".to_string(),
     })
     .expect("Failed to create User from UserCreated event")
-    .persist(&store)
+    .persist(&mut store)
     .await
     .expect("Failed to persist");
 
@@ -171,7 +172,7 @@ async fn create() -> Result<(), sqlx::Error> {
 
 #[async_std::test]
 async fn update() -> Result<(), sqlx::Error> {
-    let store = connect().await?;
+    let mut store = connect().await?;
 
     // Create user
     let user = User::try_create(UserCreated {
@@ -179,7 +180,7 @@ async fn update() -> Result<(), sqlx::Error> {
         email: "bobby@bea.ns".to_string(),
     })
     .expect("Failed to create User from UserCreated event")
-    .persist(&store)
+    .persist(&mut store)
     .await
     .expect("Failed to persist");
 
@@ -189,7 +190,7 @@ async fn update() -> Result<(), sqlx::Error> {
             email: "beans@bob.by".to_string(),
         })
         .expect("Failed to update User from UserEmailChanged event")
-        .persist(&store)
+        .persist(&mut store)
         .await
         .expect("Failed to persist");
 

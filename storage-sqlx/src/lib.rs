@@ -15,14 +15,40 @@
 use event_sauce::{
     DBEvent, Deletable, DeleteBuilder, EventData, Persistable, StorageBackend, StorageBuilder,
 };
+use sqlx::pool::PoolConnection;
+use sqlx::PgConnection;
+use sqlx::Transaction;
 use sqlx::{postgres::PgQueryAs, PgPool};
 use std::convert::TryInto;
 
 /// [sqlx](https://docs.rs/sqlx)-based Postgres backing store
 #[derive(Debug, Clone)]
 pub struct SqlxPgStore {
-    /// sqlx [`PgPool`](sqlx::PgPool) to commnicate with the database
+    /// sqlx [`PgPool`](sqlx::PgPool) to communicate with the database
     pub pool: PgPool,
+}
+
+impl SqlxPgStore {
+    /// TODO: Docs
+    pub async fn transaction(&self) -> Result<SqlxPgStoreTransaction, sqlx::Error> {
+        let tx = self.pool.begin().await?;
+
+        Ok(SqlxPgStoreTransaction(tx))
+    }
+}
+
+/// TODO: Docs
+pub struct SqlxPgStoreTransaction(Transaction<PoolConnection<PgConnection>>);
+
+impl SqlxPgStoreTransaction {
+    /// TODO: Docs
+    pub fn get(&mut self) -> &mut Transaction<PoolConnection<PgConnection>> {
+        &mut self.0
+    }
+}
+
+impl StorageBackend for SqlxPgStoreTransaction {
+    type Error = sqlx::Error;
 }
 
 impl SqlxPgStore {
@@ -67,8 +93,8 @@ impl StorageBackend for SqlxPgStore {
 }
 
 #[async_trait::async_trait]
-impl Persistable<SqlxPgStore, DBEvent> for DBEvent {
-    async fn persist(self, store: &SqlxPgStore) -> Result<Self, sqlx::Error> {
+impl Persistable<SqlxPgStoreTransaction, DBEvent> for DBEvent {
+    async fn persist(self, store: &mut SqlxPgStoreTransaction) -> Result<Self, sqlx::Error> {
         let saved: Self = sqlx::query_as(
             r#"insert into events (
                 id,
@@ -99,7 +125,7 @@ impl Persistable<SqlxPgStore, DBEvent> for DBEvent {
         .bind(self.data)
         .bind(self.session_id)
         .bind(self.created_at)
-        .fetch_one(&store.pool)
+        .fetch_one(store.get())
         .await?;
 
         log::trace!("Persisted event {}: {:?}", saved.id, saved);
@@ -108,42 +134,80 @@ impl Persistable<SqlxPgStore, DBEvent> for DBEvent {
     }
 }
 
+// Transaction impl
 #[async_trait::async_trait]
-impl<Ent, ED> Persistable<SqlxPgStore, Ent> for StorageBuilder<Ent, ED>
+impl<Ent, ED> Persistable<SqlxPgStoreTransaction, Ent> for StorageBuilder<Ent, ED>
 where
-    ED: EventData + std::marker::Send,
-    Ent: Persistable<SqlxPgStore, Ent> + std::marker::Send,
+    ED: EventData + Send,
+    Ent: Persistable<SqlxPgStoreTransaction, Ent> + Send,
 {
-    async fn persist(self, store: &SqlxPgStore) -> Result<Ent, sqlx::Error> {
+    async fn persist(self, tx: &mut SqlxPgStoreTransaction) -> Result<Ent, sqlx::Error> {
         // TODO: Enum error type to handle this unwrap
         let db_event: DBEvent = self
             .event
             .try_into()
             .expect("Failed to convert Event into DBEvent");
 
-        db_event.persist(&store).await?;
+        db_event.persist(tx).await?;
 
-        self.entity.persist(&store).await
+        self.entity.persist(tx).await
     }
 }
 
+// Transaction impl
 #[async_trait::async_trait]
-impl<Ent, ED> Deletable<SqlxPgStore> for DeleteBuilder<Ent, ED>
+impl<Ent, ED> Deletable<SqlxPgStoreTransaction> for DeleteBuilder<Ent, ED>
 where
-    ED: EventData + std::marker::Send,
-    Ent: Deletable<SqlxPgStore> + std::marker::Send,
+    ED: EventData + Send,
+    Ent: Deletable<SqlxPgStoreTransaction> + Send,
 {
-    async fn delete(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
+    async fn delete(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
         // TODO: Enum error type to handle this unwrap
         let db_event: DBEvent = self
             .event
             .try_into()
             .expect("Failed to convert Event into DBEvent");
 
-        db_event.persist(&store).await?;
+        db_event.persist(tx).await?;
 
         println!("Event persisted");
 
-        self.entity.delete(&store).await
+        self.entity.delete(tx).await
+    }
+}
+
+// Plain connection impl
+#[async_trait::async_trait]
+impl<Ent, ED> Persistable<SqlxPgStore, Ent> for StorageBuilder<Ent, ED>
+where
+    ED: EventData + Send,
+    Ent: Persistable<SqlxPgStoreTransaction, Ent> + Send,
+{
+    async fn persist(self, store: &mut SqlxPgStore) -> Result<Ent, sqlx::Error> {
+        let mut tx = store.transaction().await?;
+
+        let new = self.persist(&mut tx).await?;
+
+        tx.0.commit().await?;
+
+        Ok(new)
+    }
+}
+
+// Plain connection impl
+#[async_trait::async_trait]
+impl<Ent, ED> Deletable<SqlxPgStore> for DeleteBuilder<Ent, ED>
+where
+    ED: EventData + Send,
+    Ent: Deletable<SqlxPgStoreTransaction> + Send,
+{
+    async fn delete(self, store: &mut SqlxPgStore) -> Result<(), sqlx::Error> {
+        let mut tx = store.transaction().await?;
+
+        self.delete(&mut tx).await?;
+
+        tx.0.commit().await?;
+
+        Ok(())
     }
 }
