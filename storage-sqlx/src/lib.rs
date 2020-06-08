@@ -45,6 +45,13 @@ impl SqlxPgStoreTransaction {
     pub fn get(&mut self) -> &mut Transaction<PoolConnection<PgConnection>> {
         &mut self.0
     }
+
+    /// TODO: Docs
+    pub async fn commit(self) -> Result<(), sqlx::Error> {
+        self.0.commit().await?;
+
+        Ok(())
+    }
 }
 
 impl StorageBackend for SqlxPgStoreTransaction {
