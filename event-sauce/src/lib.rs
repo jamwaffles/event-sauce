@@ -70,27 +70,27 @@ pub trait EventData: Serialize + for<'de> Deserialize<'de> {
 
 /// A trait implemented for any item that can be persisted to a backing store
 #[async_trait::async_trait]
-pub trait Persistable<Store, Out>: Sized
+pub trait Persistable<Storage, Out>: Sized
 where
-    Store: StorageBackend,
+    Storage: StorageBackend,
 {
     /// Save or update the entity
     ///
     /// This method must be idempotent.
-    async fn persist(self, store: &Store) -> Result<Out, Store::Error>;
+    async fn persist(self, store: &mut Storage) -> Result<Out, Storage::Error>;
 }
 
 /// Implemented for all entities that can be removed or otherwise marked as deleted in the database
 #[async_trait::async_trait]
-pub trait Deletable<Store>
+pub trait Deletable<Storage>
 where
-    Store: StorageBackend,
+    Storage: StorageBackend,
 {
     /// Delete an entity
     ///
     /// Implementations of this method may either remove the entity from the database entirely, set
     /// a `deleted_at` column to the current time, or something else.
-    async fn delete(self, store: &Store) -> Result<(), Store::Error>;
+    async fn delete(self, store: &mut Storage) -> Result<(), Storage::Error>;
 }
 
 /// Add the ability to create a new entity from a given event

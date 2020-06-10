@@ -1,6 +1,5 @@
 use event_sauce::{
-    prelude::*, AggregateCreate, AggregateUpdate, CreateEventBuilder, Deletable, Entity, Event,
-    EventData, Persistable, UpdateEventBuilder,
+    prelude::*, AggregateCreate, AggregateDelete, AggregateUpdate, Deletable, Event, Persistable,
 };
 use event_sauce_storage_sqlx::SqlxPgStoreTransaction;
 // use event_sauce::UpdateEntity;
@@ -10,48 +9,58 @@ use uuid::Uuid;
 
 const USERS_TABLE: &str = "crud_test_users";
 
-#[derive(serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow)]
+#[derive(
+    serde_derive::Serialize,
+    serde_derive::Deserialize,
+    sqlx::FromRow,
+    event_sauce_derive::Entity,
+    PartialEq,
+    Debug,
+)]
+#[event_sauce(entity_name = "users")]
 struct User {
+    #[event_sauce(id)]
     id: Uuid,
     name: String,
     email: String,
 }
 
-impl Entity for User {
-    const ENTITY_TYPE: &'static str = "users";
-
-    fn entity_id(&self) -> Uuid {
-        self.id
-    }
-}
-
-impl CreateEntityBuilder<UserCreated> for User {}
-impl UpdateEntityBuilder<UserEmailChanged> for User {}
-
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::CreateEventData,
+)]
+#[event_sauce(User)]
 struct UserCreated {
     name: String,
     email: String,
 }
 
-impl EventData for UserCreated {
-    type Entity = User;
-    type Builder = CreateEventBuilder<Self>;
-
-    const EVENT_TYPE: &'static str = "UserCreated";
-}
-
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::UpdateEventData,
+)]
+#[event_sauce(User)]
 struct UserEmailChanged {
     email: String,
 }
 
-impl EventData for UserEmailChanged {
-    type Entity = User;
-    type Builder = UpdateEventBuilder<Self>;
+/// Empty create event to test compilation works with unit structs
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::CreateEventData,
+)]
+#[event_sauce(User)]
+struct TestUnitStructCreate;
 
-    const EVENT_TYPE: &'static str = "UserEmailChanged";
-}
+/// Empty update event to test compilation works with unit structs
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::UpdateEventData,
+)]
+#[event_sauce(User)]
+struct TestUnitStructUpdate;
+
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::DeleteEventData,
+)]
+#[event_sauce(User)]
+struct UserDeleted;
 
 #[async_trait::async_trait]
 impl Persistable<SqlxPgStoreTransaction, User> for User {
@@ -127,6 +136,40 @@ impl AggregateUpdate<UserEmailChanged> for User {
     }
 }
 
+impl AggregateCreate<TestUnitStructCreate> for User {
+    type Error = &'static str;
+
+    fn try_aggregate_create(event: &Event<TestUnitStructCreate>) -> Result<Self, Self::Error> {
+        Ok(User {
+            id: event.entity_id,
+            name: String::new(),
+            email: String::new(),
+        })
+    }
+}
+
+impl AggregateUpdate<TestUnitStructUpdate> for User {
+    type Error = &'static str;
+
+    fn try_aggregate_update(
+        self,
+        _event: &Event<TestUnitStructUpdate>,
+    ) -> Result<Self, Self::Error> {
+        Ok(self)
+    }
+}
+
+impl AggregateDelete<UserDeleted> for User {
+    type Error = &'static str;
+
+    fn try_aggregate_delete(self, _event: &Event<UserDeleted>) -> Result<Self, Self::Error> {
+        // No changes are made to the object as the `delete` impl completely removes it. If the
+        // delete behaviour was e.g. to add a "deleted_at" date flag, the code here should update
+        // the entity.
+        Ok(self)
+    }
+}
+
 async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
     let postgres = PgPool::new("postgres://sauce:sauce@localhost/sauce")
         .await
@@ -153,48 +196,46 @@ async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
 
 #[async_std::test]
 async fn create() -> Result<(), sqlx::Error> {
-    let mut store = connect().await?;
+    let store = connect().await?;
+
+    let mut tx = store.transaction().await?;
 
     let user = User::try_create(UserCreated {
-        name: "Bobby Beans".to_string(),
+        name: "I should be deleted".to_string(),
         email: "bobby@bea.ns".to_string(),
     })
     .expect("Failed to create User from UserCreated event")
-    .persist(&mut store)
+    .persist(&mut tx)
     .await
     .expect("Failed to persist");
 
-    assert_eq!(user.name, "Bobby Beans".to_string(),);
-    assert_eq!(user.email, "bobby@bea.ns".to_string());
+    let id = user.id;
 
-    Ok(())
-}
+    let user: Option<User> =
+        sqlx::query_as(&format!("select * from {} where id = $1", USERS_TABLE))
+            .bind(id)
+            .fetch_optional(&store.pool)
+            .await?;
 
-#[async_std::test]
-async fn update() -> Result<(), sqlx::Error> {
-    let mut store = connect().await?;
+    // User should not be present in the DB yet as the transaction has not been committed
+    assert_eq!(user, None);
 
-    // Create user
-    let user = User::try_create(UserCreated {
-        name: "Bobby Beans".to_string(),
-        email: "bobby@bea.ns".to_string(),
-    })
-    .expect("Failed to create User from UserCreated event")
-    .persist(&mut store)
-    .await
-    .expect("Failed to persist");
+    tx.commit().await?;
 
-    // Update user's email address
-    let user = user
-        .try_update(UserEmailChanged {
-            email: "beans@bob.by".to_string(),
-        })
-        .expect("Failed to update User from UserEmailChanged event")
-        .persist(&mut store)
-        .await
-        .expect("Failed to persist");
+    let users: Vec<User> = sqlx::query_as(&format!("select * from {} where id = $1", USERS_TABLE))
+        .bind(id)
+        .fetch_all(&store.pool)
+        .await?;
 
-    assert_eq!(user.email, "beans@bob.by".to_string());
+    // User should exist now as transaction was committed
+    assert_eq!(
+        users,
+        vec![User {
+            id,
+            name: "I should be deleted".to_string(),
+            email: "bobby@bea.ns".to_string(),
+        }]
+    );
 
     Ok(())
 }
