@@ -203,8 +203,8 @@ pub trait StorageBackend {
     /// Transaction type
     type Transaction: StorageBackendTransaction;
 
-    /// DOCS
-    async fn transaction(&self) -> Result<Self::Transaction, Self::Error>;
+    // /// DOCS
+    // async fn transaction(&self) -> Result<Self::Transaction, Self::Error>;
 }
 
 /// Storage backend transaction
@@ -281,7 +281,7 @@ where
 pub trait StorageBuilderPersist<S, E>
 where
     S: StorageBackend,
-    E: Persistable<<S as StorageBackend>::Transaction, E>,
+    E: Persistable<S::Transaction, E>,
 {
     /// Stage a deletion in a given transaction
     async fn stage_persist(self, tx: &mut S::Transaction) -> Result<E, S::Error>;

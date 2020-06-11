@@ -33,7 +33,8 @@ pub struct SqlxPgStore {
 }
 
 impl SqlxPgStore {
-    async fn transaction(&self) -> Result<SqlxPgStoreTransaction, sqlx::Error> {
+    /// Create a new transaction
+    pub async fn transaction(&self) -> Result<SqlxPgStoreTransaction, sqlx::Error> {
         let tx = self.pool.begin().await?;
 
         Ok(SqlxPgStoreTransaction(tx))
@@ -102,10 +103,6 @@ impl SqlxPgStore {
 
         Ok(())
     }
-}
-
-impl StorageBackend for SqlxPgStore {
-    type Error = sqlx::Error;
 }
 
 #[async_trait::async_trait]
@@ -272,7 +269,15 @@ where
     async fn persist(self, store: &SqlxPgStore) -> Result<E, sqlx::Error> {
         let mut tx = store.transaction().await?;
 
-        let new = self.stage_persist(&mut tx).await?;
+        // TODO: Enum error type to handle this unwrap
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
+
+        db_event.persist(&mut tx).await?;
+
+        let new = self.entity.persist(&mut tx).await?;
 
         tx.commit().await?;
 
@@ -303,7 +308,15 @@ where
     async fn delete(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
         let mut tx = store.transaction().await?;
 
-        self.stage_delete(&mut tx).await?;
+        // TODO: Enum error type to handle this unwrap
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
+
+        db_event.persist(&mut tx).await?;
+
+        self.entity.delete(&mut tx).await?;
 
         tx.commit().await
     }
