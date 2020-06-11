@@ -2,5 +2,5 @@
 
 pub use crate::{
     CreateEntityBuilder, DeleteBuilderPersist, DeleteEntityBuilder, EventBuilder, EventData,
-    StorageBuilderPersist, StorePersistThing, StoreToTransaction, UpdateEntityBuilder,
+    StorageBuilderPersist, UpdateEntityBuilder,
 };

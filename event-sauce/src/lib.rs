@@ -70,27 +70,27 @@ pub trait EventData: Serialize + for<'de> Deserialize<'de> {
 
 /// A trait implemented for any item that can be persisted to a backing store
 #[async_trait::async_trait]
-pub trait Persistable<Storage, Out = Self>: Sized
+pub trait Persistable<Txn, Out = Self>: Sized
 where
-    Storage: StorageBackend,
+    Txn: StorageBackendTransaction,
 {
     /// Save or update the entity
     ///
     /// This method must be idempotent.
-    async fn persist(self, store: &mut Storage) -> Result<Out, Storage::Error>;
+    async fn persist(self, store: &mut Txn) -> Result<Out, Txn::Error>;
 }
 
 /// Implemented for all entities that can be removed or otherwise marked as deleted in the database
 #[async_trait::async_trait]
-pub trait Deletable<Storage>
+pub trait Deletable<Txn>
 where
-    Storage: StorageBackend,
+    Txn: StorageBackendTransaction,
 {
     /// Delete an entity
     ///
     /// Implementations of this method may either remove the entity from the database entirely, set
     /// a `deleted_at` column to the current time, or something else.
-    async fn delete(self, store: &mut Storage) -> Result<(), Storage::Error>;
+    async fn delete(self, store: &mut Txn) -> Result<(), Txn::Error>;
 }
 
 /// Add the ability to create a new entity from a given event
@@ -195,8 +195,22 @@ where
 }
 
 /// Implemented for all backend storage providers (Postgres, etc)
+#[async_trait::async_trait]
 pub trait StorageBackend {
     /// The type of error returned from the storage backend
+    type Error;
+
+    /// Transaction type
+    type Transaction: StorageBackendTransaction;
+
+    /// DOCS
+    async fn transaction(&self) -> Result<Self::Transaction, Self::Error>;
+}
+
+/// Storage backend transaction
+#[async_trait::async_trait]
+pub trait StorageBackendTransaction {
+    /// DOCS
     type Error;
 }
 
@@ -239,44 +253,38 @@ where
     }
 }
 
-/// DOCS
-#[async_trait::async_trait]
-pub trait StoreToTransaction {
-    /// DOCS
-    type Error;
+// /// DOCS
+// #[async_trait::async_trait]
+// pub trait StoreToTransaction {
+//     /// DOCS
+//     type Error;
 
-    /// DOCS
-    type Transaction;
+//     /// DOCS
+//     type Transaction;
+// }
 
-    /// DOCS
-    async fn transaction(&self) -> Result<Self::Transaction, Self::Error>;
-}
+// /// DOCS
+// #[async_trait::async_trait]
+// pub trait StorePersistThing<S, E>
+// where
+//     S: StoreToTransaction,
+// {
+//     /// DOCS
+//     type Error;
 
-/// DOCS
-#[async_trait::async_trait]
-pub trait StorePersistThing<S, E>
-where
-    S: StoreToTransaction,
-{
-    /// DOCS
-    type Error;
-
-    /// DOCS
-    async fn persist(self, store: &S) -> Result<E, Self::Error>;
-}
+//     /// DOCS
+//     async fn persist(self, store: &S) -> Result<E, Self::Error>;
+// }
 
 /// DOCS
 #[async_trait::async_trait]
 pub trait StorageBuilderPersist<S, E>
 where
     S: StorageBackend,
-    E: Persistable<Self::Transaction, E>,
+    E: Persistable<<S as StorageBackend>::Transaction, E>,
 {
-    /// DOCS
-    type Transaction: StorageBackend;
-
     /// Stage a deletion in a given transaction
-    async fn stage_persist(self, tx: &mut Self::Transaction) -> Result<E, S::Error>;
+    async fn stage_persist(self, tx: &mut S::Transaction) -> Result<E, S::Error>;
 
     /// Delete immediately
     async fn persist(self, store: &S) -> Result<E, S::Error>;
@@ -288,11 +296,8 @@ pub trait DeleteBuilderPersist<S>
 where
     S: StorageBackend,
 {
-    /// DOCS
-    type Transaction;
-
     /// Stage a deletion in a given transaction
-    async fn stage_delete(self, tx: &mut Self::Transaction) -> Result<(), S::Error>;
+    async fn stage_delete(self, tx: &mut S::Transaction) -> Result<(), S::Error>;
 
     /// Delete immediately
     async fn delete(self, store: &S) -> Result<(), S::Error>;

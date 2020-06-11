@@ -13,9 +13,9 @@
 #![deny(intra_doc_link_resolution_failure)]
 
 use event_sauce::DeleteBuilderPersist;
+use event_sauce::StorageBackendTransaction;
 use event_sauce::StorageBuilderPersist;
-use event_sauce::StorePersistThing;
-use event_sauce::StoreToTransaction;
+// use event_sauce::StoreToTransaction;
 use event_sauce::{
     DBEvent, Deletable, DeleteBuilder, EventData, Persistable, StorageBackend, StorageBuilder,
 };
@@ -32,7 +32,19 @@ pub struct SqlxPgStore {
     pub pool: PgPool,
 }
 
-impl SqlxPgStore {}
+impl SqlxPgStore {
+    async fn transaction(&self) -> Result<SqlxPgStoreTransaction, sqlx::Error> {
+        let tx = self.pool.begin().await?;
+
+        Ok(SqlxPgStoreTransaction(tx))
+    }
+}
+
+#[async_trait::async_trait]
+impl StorageBackend for SqlxPgStore {
+    type Error = sqlx::Error;
+    type Transaction = SqlxPgStoreTransaction;
+}
 
 /// TODO: Docs
 pub struct SqlxPgStoreTransaction(Transaction<PoolConnection<PgConnection>>);
@@ -51,7 +63,7 @@ impl SqlxPgStoreTransaction {
     }
 }
 
-impl StorageBackend for SqlxPgStoreTransaction {
+impl StorageBackendTransaction for SqlxPgStoreTransaction {
     type Error = sqlx::Error;
 }
 
@@ -138,17 +150,17 @@ impl Persistable<SqlxPgStoreTransaction, DBEvent> for DBEvent {
     }
 }
 
-#[async_trait::async_trait]
-impl StoreToTransaction for SqlxPgStore {
-    type Error = sqlx::Error;
-    type Transaction = SqlxPgStoreTransaction;
+// #[async_trait::async_trait]
+// impl StoreToTransaction for SqlxPgStore {
+//     type Error = sqlx::Error;
+//     type Transaction = SqlxPgStoreTransaction;
 
-    async fn transaction(&self) -> Result<Self::Transaction, Self::Error> {
-        let tx = self.pool.begin().await?;
+//     async fn transaction(&self) -> Result<Self::Transaction, Self::Error> {
+//         let tx = self.pool.begin().await?;
 
-        Ok(SqlxPgStoreTransaction(tx))
-    }
-}
+//         Ok(SqlxPgStoreTransaction(tx))
+//     }
+// }
 
 // // Transaction impl
 // #[async_trait::async_trait]
@@ -240,14 +252,12 @@ impl StoreToTransaction for SqlxPgStore {
 // }
 
 #[async_trait::async_trait]
-impl<E, ED> StorageBuilderPersist<SqlxPgStore, E> for DeleteBuilder<E, ED>
+impl<E, ED> StorageBuilderPersist<SqlxPgStore, E> for StorageBuilder<E, ED>
 where
-    E: Persistable<SqlxPgStoreTransaction, E> + Send,
+    E: Persistable<SqlxPgStoreTransaction> + Send,
     ED: EventData + Send,
 {
-    type Transaction = SqlxPgStoreTransaction;
-
-    async fn stage_persist(self, tx: &mut Self::Transaction) -> Result<E, sqlx::Error> {
+    async fn stage_persist(self, tx: &mut SqlxPgStoreTransaction) -> Result<E, sqlx::Error> {
         // TODO: Enum error type to handle this unwrap
         let db_event: DBEvent = self
             .event
@@ -276,9 +286,7 @@ where
     E: Deletable<SqlxPgStoreTransaction> + Send,
     ED: EventData + Send,
 {
-    type Transaction = SqlxPgStoreTransaction;
-
-    async fn stage_delete(self, tx: &mut Self::Transaction) -> Result<(), sqlx::Error> {
+    async fn stage_delete(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
         // TODO: Enum error type to handle this unwrap
         let db_event: DBEvent = self
             .event
