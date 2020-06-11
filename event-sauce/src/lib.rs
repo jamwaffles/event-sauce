@@ -70,7 +70,7 @@ pub trait EventData: Serialize + for<'de> Deserialize<'de> {
 
 /// A trait implemented for any item that can be persisted to a backing store
 #[async_trait::async_trait]
-pub trait Persistable<Storage, Out>: Sized
+pub trait Persistable<Storage, Out = Self>: Sized
 where
     Storage: StorageBackend,
 {
@@ -237,4 +237,63 @@ where
     pub fn new(entity: Ent, event: Event<ED>) -> Self {
         Self { event, entity }
     }
+}
+
+/// DOCS
+#[async_trait::async_trait]
+pub trait StoreToTransaction {
+    /// DOCS
+    type Error;
+
+    /// DOCS
+    type Transaction;
+
+    /// DOCS
+    async fn transaction(&self) -> Result<Self::Transaction, Self::Error>;
+}
+
+/// DOCS
+#[async_trait::async_trait]
+pub trait StorePersistThing<S, E>
+where
+    S: StoreToTransaction,
+{
+    /// DOCS
+    type Error;
+
+    /// DOCS
+    async fn persist(self, store: &S) -> Result<E, Self::Error>;
+}
+
+/// DOCS
+#[async_trait::async_trait]
+pub trait StorageBuilderPersist<S, E>
+where
+    S: StorageBackend,
+    E: Persistable<Self::Transaction, E>,
+{
+    /// DOCS
+    type Transaction: StorageBackend;
+
+    /// Stage a deletion in a given transaction
+    async fn stage_persist(self, tx: &mut Self::Transaction) -> Result<E, S::Error>;
+
+    /// Delete immediately
+    async fn persist(self, store: &S) -> Result<E, S::Error>;
+}
+
+/// DOCS
+#[async_trait::async_trait]
+pub trait DeleteBuilderPersist<S>
+where
+    S: StorageBackend,
+{
+    /// DOCS
+    type Transaction;
+
+    /// Stage a deletion in a given transaction
+    async fn stage_delete(self, tx: &mut Self::Transaction) -> Result<(), S::Error>;
+
+    /// Delete immediately
+    async fn delete(self, store: &S) -> Result<(), S::Error>;
 }

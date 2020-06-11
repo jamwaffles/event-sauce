@@ -63,7 +63,7 @@ struct TestUnitStructUpdate;
 struct UserDeleted;
 
 #[async_trait::async_trait]
-impl Persistable<SqlxPgStoreTransaction, User> for User {
+impl Persistable<SqlxPgStoreTransaction> for User {
     async fn persist(self, tx: &mut SqlxPgStoreTransaction) -> Result<Self, sqlx::Error> {
         let blah = format!(
             "insert into {}
@@ -205,7 +205,7 @@ async fn create() -> Result<(), sqlx::Error> {
         email: "bobby@bea.ns".to_string(),
     })
     .expect("Failed to create User from UserCreated event")
-    .persist(&mut tx)
+    .stage_persist(&mut tx)
     .await
     .expect("Failed to persist");
 
@@ -235,6 +235,33 @@ async fn create() -> Result<(), sqlx::Error> {
             name: "I should be deleted".to_string(),
             email: "bobby@bea.ns".to_string(),
         }]
+    );
+
+    Ok(())
+}
+
+#[async_std::test]
+async fn create_with_store() -> Result<(), sqlx::Error> {
+    let store = connect().await?;
+
+    let user = User::try_create(UserCreated {
+        name: "Created with store".to_string(),
+        email: "bobby@bea.ns".to_string(),
+    })
+    .expect("Failed to create User from UserCreated event")
+    .persist(&store)
+    .await
+    .expect("Failed to persist");
+
+    let id = user.id;
+
+    assert_eq!(
+        user,
+        User {
+            id,
+            name: "Created with store".to_string(),
+            email: "bobby@bea.ns".to_string(),
+        }
     );
 
     Ok(())
