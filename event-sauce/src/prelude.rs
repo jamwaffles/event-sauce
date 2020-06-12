@@ -1,5 +1,6 @@
 //! event-sauce prelude
 
 pub use crate::{
-    CreateEntityBuilder, DeleteEntityBuilder, EventBuilder, EventData, UpdateEntityBuilder,
+    CreateEntityBuilder, DeleteBuilderPersist, DeleteEntityBuilder, EventBuilder, EventData,
+    StorageBuilderPersist, UpdateEntityBuilder,
 };
