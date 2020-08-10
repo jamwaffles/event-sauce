@@ -37,7 +37,6 @@ use uuid::Uuid;
 /// #[event_sauce(User)]
 /// struct UserPurged;
 ///
-///
 /// impl AggregatePurge<UserPurged> for User {
 ///     type Error = ();
 /// }
