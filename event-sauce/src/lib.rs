@@ -18,7 +18,9 @@ mod triggers;
 pub use crate::{
     db_event::DBEvent,
     event::Event,
-    event_builder::{CreateEventBuilder, DeleteEventBuilder, EventBuilder, UpdateEventBuilder},
+    event_builder::{
+        CreateEventBuilder, DeleteEventBuilder, EventBuilder, PurgeEventBuilder, UpdateEventBuilder,
+    },
     triggers::{OnCreated, OnUpdated},
 };
 use serde::{Deserialize, Serialize};
@@ -90,6 +92,7 @@ where
     ///
     /// Implementations of this method may either remove the entity from the database entirely, set
     /// a `deleted_at` column to the current time, or something else.
+    /// Event data is maintaned. For deletion of event data see Purgeable
     async fn delete(self, store: &mut Txn) -> Result<(), Txn::Error>;
 }
 
@@ -138,6 +141,15 @@ where
     fn try_aggregate_delete(self, _event: &Event<ED>) -> Result<Self, Self::Error> {
         Ok(self)
     }
+}
+
+/// Add the ability to delete an entity
+pub trait AggregatePurge<ED>: Sized
+where
+    ED: EventData,
+{
+    /// The error type to return when the entity could not be updated
+    type Error;
 }
 
 /// A wrapper trait around [`AggregateCreate`] to handle event-sauce integration boilerplate
@@ -191,6 +203,22 @@ where
         let entity = self.try_aggregate_delete(&event)?;
 
         Ok(DeleteBuilder::new(entity, event))
+    }
+}
+
+/// A wrapper trait around [`AggregatePurge`] to handle event-sauce integration boilerplate
+pub trait PurgeEntityBuilder<ED>: AggregatePurge<ED> + Entity
+where
+    ED: EventData,
+{
+    /// Creates a PurgeBuilder
+    fn try_purge<B>(self, builder: B) -> Result<PurgeBuilder<Self, ED>, Self::Error>
+    where
+        B: Into<PurgeEventBuilder<ED>>,
+    {
+        let event = builder.into().build_with_entity_id(self.entity_id());
+
+        Ok(PurgeBuilder::new(self, event))
     }
 }
 
@@ -253,29 +281,6 @@ where
     }
 }
 
-// /// DOCS
-// #[async_trait::async_trait]
-// pub trait StoreToTransaction {
-//     /// DOCS
-//     type Error;
-
-//     /// DOCS
-//     type Transaction;
-// }
-
-// /// DOCS
-// #[async_trait::async_trait]
-// pub trait StorePersistThing<S, E>
-// where
-//     S: StoreToTransaction,
-// {
-//     /// DOCS
-//     type Error;
-
-//     /// DOCS
-//     async fn persist(self, store: &S) -> Result<E, Self::Error>;
-// }
-
 /// DOCS
 #[async_trait::async_trait]
 pub trait StorageBuilderPersist<S, E>
@@ -301,4 +306,36 @@ where
 
     /// Delete immediately
     async fn delete(self, store: &S) -> Result<(), S::Error>;
+}
+
+/// A wrapper around a tuple of event and entity, used to purge an entity in the database
+pub struct PurgeBuilder<Ent: Entity, ED: EventData> {
+    /// Purge event to persist
+    pub event: Event<ED>,
+    /// The entity to purge
+    pub entity: Ent,
+}
+
+impl<ED, Ent> PurgeBuilder<Ent, ED>
+where
+    ED: EventData,
+    Ent: Entity,
+{
+    /// Create a new entity/event pair
+    pub fn new(entity: Ent, event: Event<ED>) -> Self {
+        Self { event, entity }
+    }
+}
+
+/// Helper trait to purge entities
+#[async_trait::async_trait]
+pub trait PurgeBuilderExecute<S>
+where
+    S: StorageBackend,
+{
+    /// Stage the entity purge in a given transaction
+    async fn stage_purge(self, tx: &mut S::Transaction) -> Result<(), S::Error>;
+
+    /// Purge an entity
+    async fn purge(self, store: &S) -> Result<(), S::Error>;
 }

@@ -24,6 +24,7 @@ enum BuilderType {
     Create,
     Update,
     Delete,
+    Purge,
 }
 
 struct EventDataAttributes {
@@ -88,6 +89,10 @@ fn expand_derive_event_data_struct(
         BuilderType::Delete => (
             quote!(event_sauce::DeleteEntityBuilder),
             quote!(event_sauce::DeleteEventBuilder),
+        ),
+        BuilderType::Purge => (
+            quote!(event_sauce::PurgeEntityBuilder),
+            quote!(event_sauce::PurgeEventBuilder),
         ),
     };
 
@@ -166,6 +171,29 @@ pub fn expand_derive_delete_event_data(
             fields: Fields::Unit,
             ..
         }) => expand_derive_event_data_struct(input, BuilderType::Delete),
+
+        Data::Enum(_) => Err(syn::Error::new_spanned(input, "enums are not supported")),
+
+        Data::Union(_) => Err(syn::Error::new_spanned(input, "unions are not supported")),
+    }
+}
+
+pub fn expand_derive_purge_event_data(
+    input: &DeriveInput,
+) -> syn::Result<proc_macro2::TokenStream> {
+    match &input.data {
+        Data::Struct(DataStruct {
+            fields: Fields::Named(FieldsNamed { .. }),
+            ..
+        })
+        | Data::Struct(DataStruct {
+            fields: Fields::Unnamed(_),
+            ..
+        })
+        | Data::Struct(DataStruct {
+            fields: Fields::Unit,
+            ..
+        }) => expand_derive_event_data_struct(input, BuilderType::Purge),
 
         Data::Enum(_) => Err(syn::Error::new_spanned(input, "enums are not supported")),
 
