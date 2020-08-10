@@ -143,15 +143,6 @@ where
     }
 }
 
-/// Add the ability to delete an entity
-pub trait AggregatePurge<ED>: Sized
-where
-    ED: EventData,
-{
-    /// The error type to return when the entity could not be purged.
-    type Error;
-}
-
 /// A wrapper trait around [`AggregateCreate`] to handle event-sauce integration boilerplate
 pub trait CreateEntityBuilder<ED>: AggregateCreate<ED>
 where
@@ -206,19 +197,19 @@ where
     }
 }
 
-/// A wrapper trait around [`AggregatePurge`] to handle event-sauce integration boilerplate
-pub trait PurgeEntityBuilder<ED>: AggregatePurge<ED> + Entity
+/// Trait to provide a PurgeBuilder to any Entity
+pub trait PurgeEntityBuilder<ED>: Entity + Sized
 where
     ED: EventData,
 {
     /// Creates a PurgeBuilder
-    fn try_purge<B>(self, builder: B) -> Result<PurgeBuilder<Self, ED>, Self::Error>
+    fn try_purge<B>(self, builder: B) -> PurgeBuilder<Self, ED>
     where
         B: Into<PurgeEventBuilder<ED>>,
     {
         let event = builder.into().build_with_entity_id(self.entity_id());
 
-        Ok(PurgeBuilder::new(self, event))
+        PurgeBuilder::new(self, event)
     }
 }
 

@@ -1,4 +1,4 @@
-use event_sauce::{prelude::*, AggregateCreate, AggregatePurge, DBEvent, Event, Persistable};
+use event_sauce::{prelude::*, AggregateCreate, DBEvent, Event, Persistable};
 use event_sauce_storage_sqlx::{SqlxPgStore, SqlxPgStoreTransaction};
 // use event_sauce::UpdateEntity;
 use sqlx::{postgres::PgQueryAs, PgPool};
@@ -51,10 +51,6 @@ impl AggregateCreate<UserCreated> for User {
 #[derive(serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::PurgeEventData)]
 #[event_sauce(User)]
 struct UserPurged;
-
-impl AggregatePurge<UserPurged> for User {
-    type Error = ();
-}
 
 #[async_trait::async_trait]
 impl Persistable<SqlxPgStoreTransaction> for User {
@@ -145,7 +141,6 @@ async fn purge() -> Result<(), sqlx::Error> {
     assert_eq!(res.0, 1);
 
     user.try_purge(UserPurged {})
-        .expect("Failed to aggregate from UserPurged event")
         .stage_purge(&mut tx)
         .await
         .expect("Failed to run purge");

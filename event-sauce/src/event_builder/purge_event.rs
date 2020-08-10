@@ -15,7 +15,7 @@ use uuid::Uuid;
 ///
 /// ```rust
 /// # fn main() -> Result<(), ()> {
-/// use event_sauce::{prelude::*, Event, PurgeEventBuilder, PurgeEntityBuilder, AggregatePurge};
+/// use event_sauce::{prelude::*, Event, PurgeEventBuilder, PurgeEntityBuilder};
 /// use uuid::Uuid;
 ///
 /// #[derive(event_sauce_derive::Entity)]
@@ -37,15 +37,11 @@ use uuid::Uuid;
 /// #[event_sauce(User)]
 /// struct UserPurged;
 ///
-///
-/// impl AggregatePurge<UserPurged> for User {
-///     type Error = ();
-/// }
 /// let session_id = Uuid::new_v4();
 ///
 /// let user = User { id: Uuid::new_v4() };
 ///
-/// user.try_purge(UserPurged {}.with_session_id(session_id))?;
+/// UserPurged {}.with_session_id(session_id);
 /// # Ok(()) }
 /// ```
 pub struct PurgeEventBuilder<D: EventData> {
