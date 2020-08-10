@@ -92,7 +92,8 @@ where
     ///
     /// Implementations of this method may either remove the entity from the database entirely, set
     /// a `deleted_at` column to the current time, or something else.
-    /// Event data is maintaned. For deletion of event data see Purgeable
+    /// Event data for the entity must always be retained. To fully delete the entity and any event 
+    /// data associated with it (to comply with the GDPR for example), see the [`AggregatePurge`] trait.
     async fn delete(self, store: &mut Txn) -> Result<(), Txn::Error>;
 }
 
