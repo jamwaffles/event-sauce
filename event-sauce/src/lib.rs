@@ -148,7 +148,7 @@ pub trait AggregatePurge<ED>: Sized
 where
     ED: EventData,
 {
-    /// The error type to return when the entity could not be updated
+    /// The error type to return when the entity could not be purged.
     type Error;
 }
 
