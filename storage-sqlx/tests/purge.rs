@@ -12,7 +12,7 @@ use uuid::Uuid;
     PartialEq,
     Debug,
 )]
-#[event_sauce(entity_name = "crud_test_users")]
+#[event_sauce(entity_name = "crud_test_users_purge")]
 struct User {
     #[event_sauce(id)]
     id: Uuid,

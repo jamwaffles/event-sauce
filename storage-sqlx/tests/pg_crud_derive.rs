@@ -7,12 +7,10 @@ use event_sauce_storage_sqlx::SqlxPgStore;
 use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
-const USERS_TABLE: &str = "crud_test_users";
-
 #[derive(
     serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow, event_sauce_derive::Entity,
 )]
-#[event_sauce(entity_name = "users")]
+#[event_sauce(entity_name = "crud_test_users_derive")]
 struct User {
     #[event_sauce(id)]
     id: Uuid,
@@ -70,7 +68,7 @@ impl Persistable<SqlxPgStoreTransaction, User> for User {
                 name = excluded.name,
                 email = excluded.email
             returning *",
-            USERS_TABLE
+            User::entity_type()
         );
 
         let new = sqlx::query_as(&blah)
@@ -87,10 +85,13 @@ impl Persistable<SqlxPgStoreTransaction, User> for User {
 #[async_trait::async_trait]
 impl Deletable<SqlxPgStoreTransaction> for User {
     async fn delete(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
-        sqlx::query(&format!("delete from {} where id = $1", USERS_TABLE))
-            .bind(self.id)
-            .execute(tx.get())
-            .await?;
+        sqlx::query(&format!(
+            "delete from {} where id = $1",
+            User::entity_type()
+        ))
+        .bind(self.id)
+        .execute(tx.get())
+        .await?;
 
         Ok(())
     }
@@ -178,7 +179,7 @@ async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
                 email varchar not null
             );
         "#,
-        USERS_TABLE
+        User::entity_type()
     ))
     .execute(&postgres)
     .await
@@ -229,7 +230,7 @@ async fn create_with_custom_entity_id() -> Result<(), sqlx::Error> {
 
     let (found,): (i64,) = sqlx::query_as(&format!(
         "select count(*) from {} where id = $1",
-        USERS_TABLE
+        User::entity_type()
     ))
     .bind(entity_id)
     .fetch_one(&store.pool)
@@ -293,7 +294,7 @@ async fn delete() -> Result<(), sqlx::Error> {
 
     let (found,): (i64,) = sqlx::query_as(&format!(
         "select count(*) from {} where id = $1",
-        USERS_TABLE
+        User::entity_type()
     ))
     .bind(id)
     .fetch_one(&store.pool)
@@ -311,7 +312,7 @@ async fn delete() -> Result<(), sqlx::Error> {
 
     let (found,): (i64,) = sqlx::query_as(&format!(
         "select count(*) from {} where id = $1",
-        USERS_TABLE
+        User::entity_type()
     ))
     .bind(id)
     .fetch_one(&store.pool)

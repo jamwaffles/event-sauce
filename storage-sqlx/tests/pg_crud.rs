@@ -16,7 +16,7 @@ struct User {
 }
 
 impl Entity for User {
-    const ENTITY_TYPE: &'static str = "users";
+    const ENTITY_TYPE: &'static str = "crud_test_users";
 
     fn entity_id(&self) -> Uuid {
         self.id
