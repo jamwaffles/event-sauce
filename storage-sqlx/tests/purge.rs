@@ -1,11 +1,7 @@
-use event_sauce::{
-    prelude::*, AggregateCreate, AggregatePurge, DBEvent, Entity, Event, Persistable,
-    PurgeBuilderExecute, PurgeEntityBuilder,
-};
+use event_sauce::{prelude::*, AggregateCreate, AggregatePurge, DBEvent, Event, Persistable};
 use event_sauce_storage_sqlx::{SqlxPgStore, SqlxPgStoreTransaction};
 // use event_sauce::UpdateEntity;
 use sqlx::{postgres::PgQueryAs, PgPool};
-use std::convert::TryFrom;
 use uuid::Uuid;
 
 #[derive(
