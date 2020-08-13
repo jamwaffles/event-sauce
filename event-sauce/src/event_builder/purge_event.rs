@@ -4,7 +4,7 @@ use crate::{Entity, Event, EventBuilder, EventData};
 use chrono::Utc;
 use uuid::Uuid;
 
-/// Delete event builder
+/// Purge event builder
 ///
 /// Build an [`Event`] from a session id, used to purge entities. Purging deletes the entities.
 /// It keeps the event history but sets the `data` property of all events related to the entity to None.
@@ -41,7 +41,11 @@ use uuid::Uuid;
 ///
 /// let user = User { id: Uuid::new_v4() };
 ///
-/// UserPurged {}.with_session_id(session_id);
+/// let event = UserPurged {}.with_session_id(session_id);
+///
+/// let purge_builder = user.try_purge(UserPurged {});
+///
+/// // purge_builder.purge(&store).await?;
 /// # Ok(()) }
 /// ```
 pub struct PurgeEventBuilder<D: EventData> {
