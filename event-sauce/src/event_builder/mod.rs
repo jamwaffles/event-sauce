@@ -1,11 +1,13 @@
 mod create_event;
 mod delete_event;
+mod purge_event;
 mod update_event;
 
 use uuid::Uuid;
 
 pub use create_event::CreateEventBuilder;
 pub use delete_event::DeleteEventBuilder;
+pub use purge_event::PurgeEventBuilder;
 pub use update_event::UpdateEventBuilder;
 
 /// Methods common to all event builders
