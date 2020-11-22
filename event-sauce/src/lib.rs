@@ -7,7 +7,7 @@
 //! Core crate following the event sourcing paradigm.
 
 #![deny(missing_docs)]
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 
 mod db_event;
 mod event;

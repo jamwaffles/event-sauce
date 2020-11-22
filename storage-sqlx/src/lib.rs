@@ -10,7 +10,7 @@
 //! - `with-postgres` (enabled by default) - Enable support for Postgres databases by exposing the `SqlxPgStore` storage adapter.
 
 #![deny(missing_docs)]
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(broken_intra_doc_links)]
 
 use event_sauce::DeleteBuilderPersist;
 use event_sauce::StorageBackendTransaction;
