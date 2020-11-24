@@ -11,8 +11,8 @@ name = "pg_crud"
 required-features = [ "with-postgres" ]
 
 [dependencies]
-sqlx = {version = "0.3.2", features=["uuid", "chrono", "macros", "json"]}
-event-sauce = { version = "0.1.0", features = [ "sqlx" ] }
+sqlx = {version = "0.3.5", features=["uuid", "chrono", "macros", "json"]}
+event-sauce = { version = "0.1.0", path = "../event-sauce", features = [ "sqlx" ] }
 async-trait = "0.1.29"
 uuid = "0.8.1"
 log = "0.4.8"
@@ -27,6 +27,7 @@ version = "1.5.0"
 features = ["attributes"]
 
 [dev-dependencies.event-sauce-derive]
+path = "../event-sauce-derive"
 version = "0.1.0"
 
 [features]

@@ -27,7 +27,7 @@ serde_derive = "1.0.104"
 r2d2 = "0.8.8"
 r2d2_postgres = "0.16.0"
 async-trait = "0.1.29"
-sqlx = {optional = true, version = "0.3.2", features=["postgres", "uuid", "chrono", "macros", "json"]}
+sqlx = {optional = true, version = "0.3.5", features=["postgres", "uuid", "chrono", "macros", "json"]}
 
 [dependencies.chrono]
 features = ["serde"]
@@ -38,4 +38,5 @@ features = ["v4", "serde"]
 version = "0.8.1"
 
 [dev-dependencies.event-sauce-derive]
+version = "0.1.0"
 path = "../event-sauce-derive"
