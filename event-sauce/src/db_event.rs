@@ -60,7 +60,7 @@ pub struct DBEvent {
     pub purged_at: Option<DateTime<Utc>>,
 }
 
-impl<S: EventData> TryFrom<Event<S>> for DBEvent {
+impl<S: EventData + serde::Serialize> TryFrom<Event<S>> for DBEvent {
     type Error = serde_json::Error;
 
     /// Attempt to convert an [`Event`] into a `DBEvent`

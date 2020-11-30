@@ -2,11 +2,12 @@
 
 use crate::{db_event::DBEvent, EventData};
 use chrono::{DateTime, Utc};
+use serde::Deserialize;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
 /// Event definition
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde_derive::Serialize, serde_derive::Deserialize)]
 pub struct Event<D>
 where
     D: EventData,
@@ -50,7 +51,7 @@ where
     pub purged_at: Option<DateTime<Utc>>,
 }
 
-impl<S: EventData> TryFrom<DBEvent> for Event<S> {
+impl<S: EventData + for<'de> Deserialize<'de>> TryFrom<DBEvent> for Event<S> {
     type Error = serde_json::Error;
 
     /// Attempt to decode a [`DBEvent`] into an `Event`
