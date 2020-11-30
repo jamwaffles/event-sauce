@@ -16,8 +16,6 @@ cargo doc --all-features
 
 # Crate-specific checks
 for crate in ${crates[@]}; do
-    linkchecker target/doc/event_sauce/index.html
-
     readme="target/check-${crate}-README.md"
 
     pushd $crate
