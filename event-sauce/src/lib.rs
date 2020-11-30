@@ -23,7 +23,7 @@ pub use crate::{
     },
     triggers::{OnCreated, OnUpdated},
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
 /// An entity to apply events to
@@ -41,7 +41,7 @@ pub trait Entity {
 }
 
 /// An event's data payload
-pub trait EventData: Serialize + for<'de> Deserialize<'de> {
+pub trait EventData: Serialize + Sized {
     /// The type of this event as a `PascalCase` string
     const EVENT_TYPE: &'static str;
 
