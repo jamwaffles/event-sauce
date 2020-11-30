@@ -12,7 +12,7 @@ cargo test --release -- --test-threads=1
 cargo test --release --all-features -- --test-threads=1
 cargo bench --no-run
 
-cargo +nightly doc --all-features
+cargo doc --all-features
 
 # Crate-specific checks
 for crate in ${crates[@]}; do

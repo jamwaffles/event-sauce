@@ -16,7 +16,6 @@ precheck_steps: &precheck_steps
     - run: rustup default ${RUST_VERSION:-stable}
     - run: cargo install cargo-readme
     - run: rustup component add rustfmt
-    - run: rustup toolchain add nightly
     - run: ./build.sh
     - save_cache:
         key: v2-event-sauce-{{ .Environment.CIRCLE_JOB }}-{{ checksum "event-sauce/Cargo.toml" }}-{{ checksum "event-sauce-derive/Cargo.toml" }}
