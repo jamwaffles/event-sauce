@@ -78,15 +78,15 @@ where
     /// Consume the builder and produce the final event
     pub fn build(self, entity: &D::Entity) -> Event<D> {
         Event {
-            data: Some(self.payload),
             id: Uuid::new_v4(),
-            event_type: D::event_type(),
+            event_type: D::event_type(&self.payload),
             entity_type: D::Entity::entity_type(),
             entity_id: entity.entity_id(),
             session_id: self.session_id,
             purger_id: None,
             created_at: Utc::now(),
             purged_at: None,
+            data: Some(self.payload),
         }
     }
 
@@ -94,15 +94,15 @@ where
     /// `UpdateEntityBuilder`
     pub(crate) fn build_with_entity_id(self, entity_id: Uuid) -> Event<D> {
         Event {
-            data: Some(self.payload),
             id: Uuid::new_v4(),
-            event_type: D::event_type(),
+            event_type: D::event_type(&self.payload),
             entity_type: D::Entity::entity_type(),
             entity_id,
             session_id: self.session_id,
             purger_id: None,
             created_at: Utc::now(),
             purged_at: None,
+            data: Some(self.payload),
         }
     }
 }

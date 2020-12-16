@@ -36,7 +36,9 @@ impl EventData for UserCreated {
     type Entity = User;
     type Builder = CreateEventBuilder<Self>;
 
-    const EVENT_TYPE: &'static str = "UserCreated";
+    fn event_type(&self) -> String {
+        String::from("UserCreated")
+    }
 }
 
 #[derive(serde_derive::Serialize, serde_derive::Deserialize)]
@@ -48,7 +50,9 @@ impl EventData for UserEmailChanged {
     type Entity = User;
     type Builder = UpdateEventBuilder<Self>;
 
-    const EVENT_TYPE: &'static str = "UserEmailChanged";
+    fn event_type(&self) -> String {
+        String::from("UserEmailChanged")
+    }
 }
 
 #[async_trait::async_trait]
