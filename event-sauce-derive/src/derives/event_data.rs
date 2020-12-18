@@ -25,6 +25,7 @@ enum BuilderType {
     Update,
     Delete,
     Purge,
+    Action,
 }
 
 struct EventDataAttributes {
@@ -94,6 +95,10 @@ fn expand_derive_event_data_struct(
             quote!(event_sauce::PurgeEntityBuilder),
             quote!(event_sauce::PurgeEventBuilder),
         ),
+        BuilderType::Action => (
+            quote!(event_sauce::ActionEntityBuilder),
+            quote!(event_sauce::ActionEventBuilder),
+        ),
     };
 
     Ok(quote!(
@@ -109,6 +114,25 @@ fn expand_derive_event_data_struct(
 
         impl #builder_impl<#ident> for #entity {}
     ))
+}
+
+fn expand_derive_event_data_enum(
+    input: &DeriveInput,
+    builder_type: BuilderType,
+) -> syn::Result<proc_macro2::TokenStream> {
+    let ident = &input.ident;
+
+    let EventDataAttributes { entity } = parse_event_data_attributes(&input.attrs)?;
+
+    if matches!(builder_type, BuilderType::Action) {
+        let builder_impl = quote!(event_sauce::ActionEventBuilder);
+        Ok(quote!(
+            impl #builder_impl<#ident> for #entity {}
+        ))
+    }
+    else {
+        Err(syn::Error::new_spanned(input, "enums shall use action-builder only"))
+    }
 }
 
 pub fn expand_derive_create_event_data(
@@ -175,6 +199,30 @@ pub fn expand_derive_delete_event_data(
         }) => expand_derive_event_data_struct(input, BuilderType::Delete),
 
         Data::Enum(_) => Err(syn::Error::new_spanned(input, "enums are not supported")),
+
+        Data::Union(_) => Err(syn::Error::new_spanned(input, "unions are not supported")),
+    }
+}
+
+pub fn expand_derive_action_event_data(
+    input: &DeriveInput,
+) -> syn::Result<proc_macro2::TokenStream> {
+    match &input.data {
+        Data::Struct(DataStruct {
+            fields: Fields::Named(FieldsNamed { .. }),
+            ..
+        })
+        | Data::Struct(DataStruct {
+            fields: Fields::Unnamed(_),
+            ..
+        })
+        | Data::Struct(DataStruct {
+            fields: Fields::Unit,
+            ..
+        }) => expand_derive_event_data_struct(input, BuilderType::Action),
+
+        // TODO: this was added by me
+        Data::Enum(_) => expand_derive_event_data_enum(input, BuilderType::Action),
 
         Data::Union(_) => Err(syn::Error::new_spanned(input, "unions are not supported")),
     }
