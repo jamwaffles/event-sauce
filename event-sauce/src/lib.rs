@@ -19,7 +19,7 @@ pub use crate::{
     db_event::DBEvent,
     event::Event,
     event_builder::{
-        CreateEventBuilder, DeleteEventBuilder, EventBuilder, PurgeEventBuilder, UpdateEventBuilder,
+        ActionEventBuilder, CreateEventBuilder, DeleteEventBuilder, EventBuilder, PurgeEventBuilder, UpdateEventBuilder,
     },
     triggers::{OnCreated, OnUpdated},
 };
@@ -139,6 +139,26 @@ where
     }
 }
 
+/// Add the ability to action an entity
+pub trait AggregateAction<E, EDENUM>: Sized
+where
+    E: Entity,
+    EDENUM: EventData,
+{
+    /// The error type to return when the entity could not be actioned.
+    type Error;
+
+    /// Attempt to apply the passed event to this entity
+    ///
+    /// The event being passed in holds an enum value as its payload. This enum value
+    /// can be any of the supported event data payloads in that particular situation.
+    /// The client code is required to implement this function such that it does `match`
+    /// on that enum value, which determines the action to be done. Performing this action
+    /// SHOULD be delegated to the aggregation function of the  corresponding
+    /// `Aggregate{{ACTION}}` trait.
+    fn try_aggregate_action(entity: Option<E>, event: &Event<EDENUM>) -> Result<Self, Self::Error>;
+}
+
 /// A wrapper trait around [`AggregateCreate`] to handle event-sauce integration boilerplate
 pub trait CreateEntityBuilder<ED>: AggregateCreate<ED>
 where
@@ -209,6 +229,24 @@ where
     }
 }
 
+/// A wrapper trait around [`AggregateAction`] to handle event-sauce integration boilerplate
+pub trait ActionEntityBuilder<EDENUM>: AggregateAction<Self, EDENUM> + Entity
+where
+    EDENUM: EventData,
+{
+    /// Perform the action determined by the value of the event.
+    fn try_action<B>(builder: B, entity: Option<Self>) -> Result<ActionBuilder<Self, EDENUM>, Self::Error>
+    where
+        B: Into<ActionEventBuilder<EDENUM>>,
+    {
+        let event = builder.into().build(&entity);
+
+        let entity = Self::try_aggregate_action(entity, &event)?;
+
+        Ok(ActionBuilder::new(entity, event))
+    }
+}
+
 /// Implemented for all backend storage providers (Postgres, etc)
 #[async_trait::async_trait]
 pub trait StorageBackend {
@@ -264,6 +302,31 @@ where
 {
     /// Create a new entity/event pair
     pub fn new(entity: Ent, event: Event<ED>) -> Self {
+        Self { event, entity }
+    }
+}
+
+/// A wrapper around a tuple of enum-event and entity, used to action the eventa according to its type.
+#[derive(Debug)]
+pub struct ActionBuilder<E, EDENUM>
+where
+    E: Entity,
+    EDENUM: EventData,
+{
+    /// Event to action
+    pub event: Event<EDENUM>,
+
+    /// Entity to action
+    pub entity: E,
+}
+
+impl<EDENUM, E> ActionBuilder<E, EDENUM>
+where
+    E: Entity,
+    EDENUM: EventData,
+{
+    /// Create a new entity/event pair
+    pub fn new(entity: E, event: Event<EDENUM>) -> Self {
         Self { event, entity }
     }
 }

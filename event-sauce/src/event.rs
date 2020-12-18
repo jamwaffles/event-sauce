@@ -51,6 +51,78 @@ where
     pub purged_at: Option<DateTime<Utc>>,
 }
 
+impl<EDENUM> Event<EDENUM>
+where
+    EDENUM: EventData + for<'de> Deserialize<'de>,
+{
+    /// Convert [`DBEvent`] into a generic `Event<EDENUM>`, where `EDENUM` is an enum of possible [`EventData`].
+    pub fn try_enum_event_from_db_event(db_event: DBEvent) -> Result<Event<EDENUM>, serde_json::Error> {
+        let intermediate =
+            serde_json::json!({ "data": db_event.data, "event_type": db_event.event_type });
+        let enum_data: EDENUM = serde_json::from_value(intermediate)?;
+
+        Ok(Event {
+            id: db_event.id,
+            event_type: db_event.event_type,
+            entity_type: db_event.entity_type,
+            entity_id: db_event.entity_id,
+            session_id: db_event.session_id,
+            purger_id: db_event.purger_id,
+            created_at: db_event.created_at,
+            purged_at: db_event.purged_at,
+            data: Some(enum_data),
+        })
+    }
+}
+
+impl<ED> Event<ED> where ED: EventData {
+    /// DOCS
+    pub fn from_enum_event<EDENUM: EventData>(enum_event: Event<EDENUM>, event_data: Option<ED>) -> Event<ED> {
+        Event {
+            id: enum_event.id,
+            event_type: enum_event.event_type,
+            entity_type: enum_event.entity_type,
+            entity_id: enum_event.entity_id,
+            session_id: enum_event.session_id,
+            purger_id: enum_event.purger_id,
+            created_at: enum_event.created_at,
+            purged_at: enum_event.purged_at,
+            data: event_data,
+        }
+    }
+}
+
+impl<EDENUM> Event<EDENUM> where EDENUM: EventData {
+    /// Convert generic `Event<EDENUM>` into concrete `Event<ED>`.
+    ///
+    /// The `event_data` argument MUST be the same [`EventData`] value as the `self.data` enumeration
+    /// value would be after successful `match`.
+    ///
+    /// Note that the user is required to pass the correct `event_data` as separate argument.
+    /// It is needed because the library-function has no way of knowing the `EDENUM` type and so
+    /// it can not do the `match` on it (see [`tests/action_builder.rs`] and its implementation of
+    /// `AggregateAction::<User, UserEventData>::try_aggregate_action for User` for example of such `match`).
+    /// This is exceptionally ugly, because a) the function is being passed the same value twice,
+    /// and more importantly b) there are only very limited checks we can perform here. If someone can think
+    /// of a solution to this problem, please do change this function.
+    ///
+    /// TODO: Are there at least any viable checks we can do towards ensuring that `self.data` and `event_data`
+    /// are the same?
+    pub fn into_event<ED: EventData>(self: Event<EDENUM>, event_data: Option<ED>) -> Event<ED> {
+        Event {
+            id: self.id,
+            event_type: self.event_type,
+            entity_type: self.entity_type,
+            entity_id: self.entity_id,
+            session_id: self.session_id,
+            purger_id: self.purger_id,
+            created_at: self.created_at,
+            purged_at: self.purged_at,
+            data: event_data,
+        }
+    }
+}
+
 impl<S: EventData + for<'de> Deserialize<'de>> TryFrom<DBEvent> for Event<S> {
     type Error = serde_json::Error;
 

@@ -10,6 +10,7 @@ readme = "./README.md"
 license = "MIT OR Apache-2.0"
 # https://crates.io/category_slugs
 categories = [ "data-structures", "web-programming" ]
+autotests = true
 
 [package.metadata.docs.rs]
 all-features = true
@@ -34,6 +35,9 @@ version = "0.4.10"
 [dependencies.uuid]
 features = ["v4", "serde"]
 version = "0.8.1"
+
+[dev-dependencies]
+thiserror = "1.0.22"
 
 [dev-dependencies.event-sauce-derive]
 version = "0.1.0"
