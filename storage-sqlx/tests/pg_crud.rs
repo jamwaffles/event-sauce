@@ -36,8 +36,8 @@ impl EventData for UserCreated {
     type Entity = User;
     type Builder = CreateEventBuilder<Self>;
 
-    fn event_type(&self) -> String {
-        String::from("UserCreated")
+    fn event_type(&self) -> &'static str {
+        "UserCreated"
     }
 }
 
@@ -50,8 +50,8 @@ impl EventData for UserEmailChanged {
     type Entity = User;
     type Builder = UpdateEventBuilder<Self>;
 
-    fn event_type(&self) -> String {
-        String::from("UserEmailChanged")
+    fn event_type(&self) -> &'static str {
+        "UserEmailChanged"
     }
 }
 

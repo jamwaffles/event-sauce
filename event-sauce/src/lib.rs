@@ -49,7 +49,7 @@ pub trait EventData: Serialize + Sized {
     type Builder: EventBuilder<Self>;
 
     /// Get the event type/identifier in PascalCase like `UserCreated` or `PasswordChanged`
-    fn event_type(&self) -> String;
+    fn event_type(&self) -> &'static str;
 
     /// Convert the event into a builder with a given session ID
     ///

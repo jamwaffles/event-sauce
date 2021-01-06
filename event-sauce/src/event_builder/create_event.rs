@@ -83,7 +83,7 @@ where
     pub fn build(self) -> Event<D> {
         Event {
             id: Uuid::new_v4(),
-            event_type: D::event_type(&self.payload),
+            event_type: String::from(self.payload.event_type()),
             entity_type: D::Entity::entity_type(),
             entity_id: self.entity_id,
             session_id: self.session_id,

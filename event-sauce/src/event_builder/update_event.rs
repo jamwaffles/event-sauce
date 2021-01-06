@@ -79,7 +79,7 @@ where
     pub fn build(self, entity: &D::Entity) -> Event<D> {
         Event {
             id: Uuid::new_v4(),
-            event_type: D::event_type(&self.payload),
+            event_type: String::from(self.payload.event_type()),
             entity_type: D::Entity::entity_type(),
             entity_id: entity.entity_id(),
             session_id: self.session_id,
@@ -95,7 +95,7 @@ where
     pub(crate) fn build_with_entity_id(self, entity_id: Uuid) -> Event<D> {
         Event {
             id: Uuid::new_v4(),
-            event_type: D::event_type(&self.payload),
+            event_type: String::from(self.payload.event_type()),
             entity_type: D::Entity::entity_type(),
             entity_id,
             session_id: self.session_id,
