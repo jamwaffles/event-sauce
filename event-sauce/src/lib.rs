@@ -42,9 +42,6 @@ pub trait Entity {
 
 /// An event's data payload
 pub trait EventData: Serialize + Sized {
-    /// The type of this event as a `PascalCase` string
-    const EVENT_TYPE: &'static str;
-
     /// The entity to bind this event to
     type Entity: Entity;
 
@@ -52,9 +49,7 @@ pub trait EventData: Serialize + Sized {
     type Builder: EventBuilder<Self>;
 
     /// Get the event type/identifier in PascalCase like `UserCreated` or `PasswordChanged`
-    fn event_type() -> String {
-        Self::EVENT_TYPE.to_string()
-    }
+    fn event_type(&self) -> &'static str;
 
     /// Convert the event into a builder with a given session ID
     ///

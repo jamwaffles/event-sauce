@@ -63,15 +63,15 @@ impl<D: EventData> PurgeEventBuilder<D> {
     /// `DeleteEntityBuilder`
     pub(crate) fn build_with_entity_id(self, entity_id: Uuid) -> Event<D> {
         Event {
-            data: None,
             id: Uuid::new_v4(),
-            event_type: D::event_type(),
+            event_type: String::from(self.payload.event_type()),
             entity_type: D::Entity::entity_type(),
             entity_id,
             session_id: self.session_id,
             purger_id: self.session_id,
             created_at: Utc::now(),
             purged_at: Some(Utc::now()),
+            data: None,
         }
     }
 

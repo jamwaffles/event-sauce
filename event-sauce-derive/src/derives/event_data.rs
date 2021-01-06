@@ -102,7 +102,9 @@ fn expand_derive_event_data_struct(
 
             type Builder = #event_builder <#ident>;
 
-            const EVENT_TYPE: &'static str = #ident_string;
+            fn event_type(&self) -> &'static str {
+                #ident_string
+            }
         }
 
         impl #builder_impl<#ident> for #entity {}
