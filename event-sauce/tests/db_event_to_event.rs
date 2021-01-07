@@ -167,10 +167,10 @@ fn into_enum_event() -> Result<(), EventError> {
         created_at: Utc::now(),
         purger_id: None,
         purged_at: None,
-        data: Some(serde_json::to_value(event_data.clone())?),
+        data: Some(serde_json::to_value(&event_data)?),
     };
 
-    let enum_event = Event::<UserEventData>::try_enum_event_from_db_event(db_event)?;
+    let enum_event = Event::<UserEventData>::try_from_db_event(db_event)?;
 
     #[allow(clippy::assertions_on_constants)]
     match enum_event

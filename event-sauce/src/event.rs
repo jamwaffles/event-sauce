@@ -53,12 +53,11 @@ where
 
 impl<EDENUM> Event<EDENUM>
 where
-    EDENUM: EventData + for<'de> Deserialize<'de>,
+    EDENUM: EnumEventData + for<'de> Deserialize<'de>,
 {
-    /// Convert [`DBEvent`] into a generic `Event<EDENUM>`, where `EDENUM` is an enum of possible [`EventData`].
-    pub fn try_enum_event_from_db_event(
-        db_event: DBEvent,
-    ) -> Result<Event<EDENUM>, serde_json::Error> {
+    /// Attempt to convert a general [`DBEvent`] to an event with an enum variant as its data
+    /// payload.
+    pub fn try_from_db_event(db_event: DBEvent) -> Result<Event<EDENUM>, serde_json::Error> {
         let intermediate =
             serde_json::json!({ "data": db_event.data, "event_type": db_event.event_type });
         let enum_data: EDENUM = serde_json::from_value(intermediate)?;
@@ -75,12 +74,7 @@ where
             data: Some(enum_data),
         })
     }
-}
 
-impl<EDENUM> Event<EDENUM>
-where
-    EDENUM: EnumEventData,
-{
     /// Attempt to convert an event with enum payload into a concrete variant.
     pub fn try_into_variant<ED>(self) -> Result<Event<ED>, ED::Error>
     where
