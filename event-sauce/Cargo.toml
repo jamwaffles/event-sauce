@@ -10,7 +10,6 @@ readme = "./README.md"
 license = "MIT OR Apache-2.0"
 # https://crates.io/category_slugs
 categories = [ "data-structures", "web-programming" ]
-autotests = true
 
 [package.metadata.docs.rs]
 all-features = true
