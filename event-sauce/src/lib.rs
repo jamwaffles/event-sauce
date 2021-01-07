@@ -15,8 +15,6 @@ mod event_builder;
 pub mod prelude;
 mod triggers;
 
-use std::convert::TryFrom;
-
 pub use crate::{
     db_event::DBEvent,
     event::Event,

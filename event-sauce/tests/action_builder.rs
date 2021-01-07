@@ -1,75 +1,19 @@
 use event_sauce::{
-    ActionEntityBuilder, ActionEventBuilder, AggregateAction, AggregateCreate, AggregateDelete,
-    AggregateUpdate, EnumEventData, Event, EventData,
+    ActionEntityBuilder, AggregateAction, AggregateCreate, AggregateDelete, AggregateUpdate, Event,
+    EventData,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, event_sauce_derive::EnumEventData)]
 #[serde(tag = "event_type", content = "data")]
+#[event_sauce(User)]
 pub enum UserEventData {
     UserCreated(crate::UserCreated),
     UserUpdated(crate::UserUpdated),
     UserDeleted(crate::UserDeleted),
 }
-
-// TODO: Move into a custom derive for idk, EnumEventData or something
-impl TryFrom<UserEventData> for UserCreated {
-    type Error = ();
-
-    fn try_from(value: UserEventData) -> Result<Self, Self::Error> {
-        match value {
-            UserEventData::UserCreated(e) => Ok(e),
-            _ => Err(()),
-        }
-    }
-}
-
-// TODO: Move into a custom derive for idk, EnumEventData or something
-impl TryFrom<UserEventData> for UserUpdated {
-    type Error = ();
-
-    fn try_from(value: UserEventData) -> Result<Self, Self::Error> {
-        match value {
-            UserEventData::UserUpdated(e) => Ok(e),
-            _ => Err(()),
-        }
-    }
-}
-
-// TODO: Move into a custom derive for idk, EnumEventData or something
-impl TryFrom<UserEventData> for UserDeleted {
-    type Error = ();
-
-    fn try_from(value: UserEventData) -> Result<Self, Self::Error> {
-        match value {
-            UserEventData::UserDeleted(e) => Ok(e),
-            _ => Err(()),
-        }
-    }
-}
-
-// TODO: This should really be added by `#derive(event_sauce_derive::ActionEventData)]` on `UserEventData` enum.
-impl EventData for UserEventData {
-    type Entity = User;
-
-    type Builder = ActionEventBuilder<Self>;
-
-    fn event_type(&self) -> &'static str {
-        match self {
-            UserEventData::UserCreated(data) => data.event_type(),
-            UserEventData::UserUpdated(data) => data.event_type(),
-            UserEventData::UserDeleted(data) => data.event_type(),
-        }
-    }
-}
-
-// TODO: Derive for EnumEventData
-impl EnumEventData for UserEventData {}
-
-// TODO: This should really be added by `#derive(event_sauce_derive::ActionEventData)]` on `UserEventData` enum.
-impl ActionEntityBuilder<UserEventData> for User {}
 
 impl AggregateAction<UserEventData> for User {
     type Error = EventError;
