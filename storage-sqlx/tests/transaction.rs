@@ -7,8 +7,6 @@ use event_sauce_storage_sqlx::SqlxPgStore;
 use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
-const USERS_TABLE: &str = "crud_test_users";
-
 #[derive(
     serde_derive::Serialize,
     serde_derive::Deserialize,
@@ -17,7 +15,7 @@ const USERS_TABLE: &str = "crud_test_users";
     PartialEq,
     Debug,
 )]
-#[event_sauce(entity_name = "users")]
+#[event_sauce(entity_name = "crud_test_users_txn")]
 struct User {
     #[event_sauce(id)]
     id: Uuid,
@@ -75,7 +73,7 @@ impl Persistable<SqlxPgStoreTransaction> for User {
                 name = excluded.name,
                 email = excluded.email
             returning *",
-            USERS_TABLE
+            User::entity_type()
         );
 
         let new = sqlx::query_as(&blah)
@@ -92,10 +90,13 @@ impl Persistable<SqlxPgStoreTransaction> for User {
 #[async_trait::async_trait]
 impl Deletable<SqlxPgStoreTransaction> for User {
     async fn delete(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
-        sqlx::query(&format!("delete from {} where id = $1", USERS_TABLE))
-            .bind(self.id)
-            .execute(tx.get())
-            .await?;
+        sqlx::query(&format!(
+            "delete from {} where id = $1",
+            User::entity_type()
+        ))
+        .bind(self.id)
+        .execute(tx.get())
+        .await?;
 
         Ok(())
     }
@@ -183,11 +184,11 @@ async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
                 email varchar not null
             );
         "#,
-        USERS_TABLE
+        User::entity_type()
     ))
     .execute(&postgres)
     .await
-    .expect("Failed to creeate test users table");
+    .expect("Failed to creeate transactions table");
 
     let store = SqlxPgStore::new(postgres).await?;
 
@@ -211,21 +212,26 @@ async fn create() -> Result<(), sqlx::Error> {
 
     let id = user.id;
 
-    let user: Option<User> =
-        sqlx::query_as(&format!("select * from {} where id = $1", USERS_TABLE))
-            .bind(id)
-            .fetch_optional(&store.pool)
-            .await?;
+    let user: Option<User> = sqlx::query_as(&format!(
+        "select * from {} where id = $1",
+        User::entity_type()
+    ))
+    .bind(id)
+    .fetch_optional(&store.pool)
+    .await?;
 
     // User should not be present in the DB yet as the transaction has not been committed
     assert_eq!(user, None);
 
     tx.commit().await?;
 
-    let users: Vec<User> = sqlx::query_as(&format!("select * from {} where id = $1", USERS_TABLE))
-        .bind(id)
-        .fetch_all(&store.pool)
-        .await?;
+    let users: Vec<User> = sqlx::query_as(&format!(
+        "select * from {} where id = $1",
+        User::entity_type()
+    ))
+    .bind(id)
+    .fetch_all(&store.pool)
+    .await?;
 
     // User should exist now as transaction was committed
     assert_eq!(
