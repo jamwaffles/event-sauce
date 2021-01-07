@@ -1,12 +1,12 @@
-use crate::event_builder::EventBuilder;
-use crate::{Entity, Event, EventData};
+use crate::{event_builder::EventBuilder, EnumEventData};
+use crate::{Entity, Event};
 use chrono::Utc;
 use uuid::Uuid;
 
 /// Generic event builder for an action specified by its EventData
 pub struct ActionEventBuilder<EDENUM>
 where
-    EDENUM: EventData
+    EDENUM: EnumEventData,
 {
     payload: EDENUM,
     session_id: Option<Uuid>,
@@ -14,7 +14,7 @@ where
 
 impl<EDENUM> ActionEventBuilder<EDENUM>
 where
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// DOCS
     pub fn build<E: Entity>(self, entity: &Option<E>) -> Event<EDENUM> {
@@ -34,7 +34,7 @@ where
 
 impl<EDENUM> EventBuilder<EDENUM> for ActionEventBuilder<EDENUM>
 where
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// Create a new event builder with a given event data payload
     fn new(payload: EDENUM) -> Self {
@@ -49,14 +49,5 @@ where
         self.session_id = Some(session_id);
 
         self
-    }
-}
-
-impl<EDENUM> From<EDENUM> for ActionEventBuilder<EDENUM>
-where
-    EDENUM: EventData,
-{
-    fn from(payload: EDENUM) -> Self {
-        Self::new(payload)
     }
 }

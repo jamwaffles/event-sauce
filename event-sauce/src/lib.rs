@@ -15,11 +15,14 @@ mod event_builder;
 pub mod prelude;
 mod triggers;
 
+use std::convert::TryFrom;
+
 pub use crate::{
     db_event::DBEvent,
     event::Event,
     event_builder::{
-        ActionEventBuilder, CreateEventBuilder, DeleteEventBuilder, EventBuilder, PurgeEventBuilder, UpdateEventBuilder,
+        ActionEventBuilder, CreateEventBuilder, DeleteEventBuilder, EventBuilder,
+        PurgeEventBuilder, UpdateEventBuilder,
     },
     triggers::{OnCreated, OnUpdated},
 };
@@ -64,6 +67,9 @@ pub trait EventData: Serialize + Sized {
         Self::Builder::new(self)
     }
 }
+
+/// Event payloads that can be different variants of an enum.
+pub trait EnumEventData: EventData {}
 
 /// A trait implemented for any item that can be persisted to a backing store
 #[async_trait::async_trait]
@@ -140,10 +146,9 @@ where
 }
 
 /// Add the ability to action an entity
-pub trait AggregateAction<E, EDENUM>: Sized
+pub trait AggregateAction<EDENUM>: Sized
 where
-    E: Entity,
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// The error type to return when the entity could not be actioned.
     type Error;
@@ -156,7 +161,10 @@ where
     /// on that enum value, which determines the action to be done. Performing this action
     /// SHOULD be delegated to the aggregation function of the  corresponding
     /// `Aggregate{{ACTION}}` trait.
-    fn try_aggregate_action(entity: Option<E>, event: &Event<EDENUM>) -> Result<Self, Self::Error>;
+    fn try_aggregate_action(
+        entity: Option<Self>,
+        event: &Event<EDENUM>,
+    ) -> Result<Self, Self::Error>;
 }
 
 /// A wrapper trait around [`AggregateCreate`] to handle event-sauce integration boilerplate
@@ -230,12 +238,15 @@ where
 }
 
 /// A wrapper trait around [`AggregateAction`] to handle event-sauce integration boilerplate
-pub trait ActionEntityBuilder<EDENUM>: AggregateAction<Self, EDENUM> + Entity
+pub trait ActionEntityBuilder<EDENUM>: AggregateAction<EDENUM> + Entity
 where
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// Perform the action determined by the value of the event.
-    fn try_action<B>(builder: B, entity: Option<Self>) -> Result<ActionBuilder<Self, EDENUM>, Self::Error>
+    fn try_action<B>(
+        builder: B,
+        entity: Option<Self>,
+    ) -> Result<ActionBuilder<Self, EDENUM>, Self::Error>
     where
         B: Into<ActionEventBuilder<EDENUM>>,
     {
