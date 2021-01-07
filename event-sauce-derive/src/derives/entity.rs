@@ -91,10 +91,7 @@ fn find_entity_id_field(fields: &Punctuated<Field, Comma>) -> syn::Result<Ident>
             .any(|meta| match meta {
                 Meta::List(MetaList { nested, .. }) if nested.len() == 1 => nested
                     .first()
-                    .map(|nested_meta| match nested_meta {
-                        NestedMeta::Meta(Meta::Path(path)) if path.is_ident("id") => true,
-                        _ => false,
-                    })
+                    .map(|nested_meta| matches!(nested_meta, NestedMeta::Meta(Meta::Path(path)) if path.is_ident("id")))
                     .unwrap_or(false),
                 _ => false,
             })

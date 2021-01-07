@@ -44,11 +44,11 @@ pub fn derive_delete_event_data(input: TokenStream) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(ActionEventData, attributes(event_sauce))]
+#[proc_macro_derive(EnumEventData, attributes(event_sauce))]
 pub fn derive_action_event_data(input: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(input as syn::DeriveInput);
 
-    match derives::event_data::expand_derive_action_event_data(&input) {
+    match derives::enum_event_data::expand_derive_enum_event_data(&input) {
         Ok(ts) => ts.into(),
         Err(e) => e.to_compile_error().into(),
     }
