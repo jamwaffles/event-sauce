@@ -1,8 +1,9 @@
 use event_sauce::{
     ActionEntityBuilder, ActionEventBuilder, AggregateAction, AggregateCreate, AggregateDelete,
-    AggregateUpdate, Event, EventData,
+    AggregateUpdate, EnumEventData, Event, EventData,
 };
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -11,6 +12,42 @@ pub enum UserEventData {
     UserCreated(crate::UserCreated),
     UserUpdated(crate::UserUpdated),
     UserDeleted(crate::UserDeleted),
+}
+
+// TODO: Move into a custom derive for idk, EnumEventData or something
+impl TryFrom<UserEventData> for UserCreated {
+    type Error = ();
+
+    fn try_from(value: UserEventData) -> Result<Self, Self::Error> {
+        match value {
+            UserEventData::UserCreated(e) => Ok(e),
+            _ => Err(()),
+        }
+    }
+}
+
+// TODO: Move into a custom derive for idk, EnumEventData or something
+impl TryFrom<UserEventData> for UserUpdated {
+    type Error = ();
+
+    fn try_from(value: UserEventData) -> Result<Self, Self::Error> {
+        match value {
+            UserEventData::UserUpdated(e) => Ok(e),
+            _ => Err(()),
+        }
+    }
+}
+
+// TODO: Move into a custom derive for idk, EnumEventData or something
+impl TryFrom<UserEventData> for UserDeleted {
+    type Error = ();
+
+    fn try_from(value: UserEventData) -> Result<Self, Self::Error> {
+        match value {
+            UserEventData::UserDeleted(e) => Ok(e),
+            _ => Err(()),
+        }
+    }
 }
 
 // TODO: This should really be added by `#derive(event_sauce_derive::ActionEventData)]` on `UserEventData` enum.
@@ -28,42 +65,60 @@ impl EventData for UserEventData {
     }
 }
 
+// TODO: Derive for EnumEventData
+impl EnumEventData for UserEventData {}
+
 // TODO: This should really be added by `#derive(event_sauce_derive::ActionEventData)]` on `UserEventData` enum.
 impl ActionEntityBuilder<UserEventData> for User {}
 
-impl AggregateAction<User, UserEventData> for User {
+impl AggregateAction<UserEventData> for User {
     type Error = EventError;
 
     fn try_aggregate_action(
-        entity: Option<User>,
+        entity: Option<Self>,
         event: &Event<UserEventData>,
     ) -> Result<Self, Self::Error> {
-        // ERROR TODO
-        match event
-            .data
-            .as_ref()
-            .ok_or(EventError::EmptyEventData("User", "UserEventData"))?
-        {
-            UserEventData::UserCreated(data) => {
-                let create_event =
-                    event.clone().into_event::<UserCreated>(Some(data.clone()));
-                Self::try_aggregate_create(&create_event)
+        if let Some(ref data) = event.data {
+            match data {
+                UserEventData::UserCreated(_) => {
+                    // let create_event = event.clone().into_event::<UserCreated>(Some(data.clone()));
+                    let create_event = event
+                        .clone()
+                        .try_into_variant::<UserCreated>()
+                        // TODO: Better error variant
+                        .map_err(|_e| EventError::Infallible())?;
+
+                    Self::try_aggregate_create(&create_event)
+                }
+                UserEventData::UserUpdated(_) => {
+                    let update_event = event
+                        .clone()
+                        .try_into_variant::<UserUpdated>()
+                        // TODO: Better error variant
+                        .map_err(|_e| EventError::Infallible())?;
+
+                    entity
+                        .ok_or(EventError::MissingEntity("User", "UserUpdated"))?
+                        .try_aggregate_update(&update_event)
+                }
+                UserEventData::UserDeleted(_) => {
+                    let delete_event = event
+                        .clone()
+                        .try_into_variant::<UserDeleted>()
+                        // TODO: Better error variant
+                        .map_err(|_e| EventError::Infallible())?;
+
+                    entity
+                        .ok_or(EventError::MissingEntity("User", "UserDeleted"))?
+                        .try_aggregate_delete(&delete_event)
+                        .map_err(|_| EventError::Infallible())
+                }
             }
-            UserEventData::UserUpdated(data) => {
-                let update_event =
-                    Event::<UserUpdated>::from_enum_event(event.clone(), Some(data.clone()));
-                entity
-                    .ok_or(EventError::MissingEntity("User", "UserUpdated"))?
-                    .try_aggregate_update(&update_event)
-            }
-            UserEventData::UserDeleted(data) => {
-                let delete_event =
-                    Event::<UserDeleted>::from_enum_event(event.clone(), Some(data.clone()));
-                entity
-                    .ok_or(EventError::MissingEntity("User", "UserDeleted"))?
-                    .try_aggregate_delete(&delete_event)
-                    .map_err(|_| EventError::Infallible())
-            }
+        } else if let Some(entity) = entity {
+            // If payload is empty, this event is a noop
+            Ok(entity)
+        } else {
+            Err(EventError::MissingEntity("User", ""))
         }
     }
 }

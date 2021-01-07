@@ -1,8 +1,8 @@
 use chrono::Utc;
 use core::convert::TryFrom;
 use event_sauce::{
-    ActionEventBuilder, AggregateCreate, AggregateDelete, AggregateUpdate, DBEvent, Event,
-    EventData,
+    ActionEventBuilder, AggregateCreate, AggregateDelete, AggregateUpdate, DBEvent, EnumEventData,
+    Event, EventData,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -14,6 +14,8 @@ pub enum UserEventData {
     UserUpdated(crate::UserUpdated),
     UserDeleted(crate::UserDeleted),
 }
+
+impl EnumEventData for UserEventData {}
 
 // TODO: This should really be added by `#derive(event_sauce_derive::ActionEventData)]` on `UserEventData` enum.
 impl EventData for UserEventData {
