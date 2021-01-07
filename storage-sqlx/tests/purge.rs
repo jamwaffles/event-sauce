@@ -96,7 +96,7 @@ async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
     ))
     .execute(&postgres)
     .await
-    .expect("Failed to creeate test users table");
+    .expect("Failed to creeate purge table");
 
     let store = SqlxPgStore::new(postgres).await?;
 
