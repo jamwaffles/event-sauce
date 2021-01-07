@@ -136,7 +136,8 @@ fn into_event() -> Result<(), EventError> {
         sequence_number: Some(42),
         event_type: String::from(event_data.event_type()),
         entity_type: String::from("User"),
-        entity_id: Uuid::new_v4(), session_id: Some(Uuid::new_v4()),
+        entity_id: Uuid::new_v4(),
+        session_id: Some(Uuid::new_v4()),
         created_at: Utc::now(),
         purger_id: None,
         purged_at: None,
@@ -190,5 +191,3 @@ fn into_enum_event() -> Result<(), EventError> {
 
     Ok(())
 }
-
-

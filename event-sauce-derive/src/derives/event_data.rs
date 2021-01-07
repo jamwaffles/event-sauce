@@ -129,9 +129,11 @@ fn expand_derive_event_data_enum(
         Ok(quote!(
             impl #builder_impl<#ident> for #entity {}
         ))
-    }
-    else {
-        Err(syn::Error::new_spanned(input, "enums shall use action-builder only"))
+    } else {
+        Err(syn::Error::new_spanned(
+            input,
+            "enums shall use action-builder only",
+        ))
     }
 }
 
