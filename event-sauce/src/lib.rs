@@ -320,7 +320,7 @@ where
 pub struct ActionBuilder<E, EDENUM>
 where
     E: Entity,
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// Event to action
     pub event: Event<EDENUM>,
@@ -332,7 +332,7 @@ where
 impl<EDENUM, E> ActionBuilder<E, EDENUM>
 where
     E: Entity,
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// Create a new entity/event pair
     pub fn new(entity: E, event: Event<EDENUM>) -> Self {
