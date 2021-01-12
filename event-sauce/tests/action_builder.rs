@@ -25,28 +25,46 @@ impl AggregateAction<UserEventData> for User {
         if let Some(ref data) = event.data {
             match data {
                 UserEventData::UserCreated(_) => {
-                    let create_event = event
-                        .clone()
-                        .try_into_variant::<UserCreated>()
-                        .map_err(|_| EventError::ConversionError("Event<UserEventData>", "Event<UserCreated>"))?;
+                    let create_event =
+                        event
+                            .clone()
+                            .try_into_variant::<UserCreated>()
+                            .map_err(|_| {
+                                EventError::ConversionError(
+                                    "Event<UserEventData>",
+                                    "Event<UserCreated>",
+                                )
+                            })?;
 
                     Self::try_aggregate_create(&create_event)
                 }
                 UserEventData::UserUpdated(_) => {
-                    let update_event = event
-                        .clone()
-                        .try_into_variant::<UserUpdated>()
-                        .map_err(|_| EventError::ConversionError("Event<UserEventData>", "Event<UserUpdated>"))?;
+                    let update_event =
+                        event
+                            .clone()
+                            .try_into_variant::<UserUpdated>()
+                            .map_err(|_| {
+                                EventError::ConversionError(
+                                    "Event<UserEventData>",
+                                    "Event<UserUpdated>",
+                                )
+                            })?;
 
                     entity
                         .ok_or(EventError::MissingEntity("User", "UserUpdated"))?
                         .try_aggregate_update(&update_event)
                 }
                 UserEventData::UserDeleted(_) => {
-                    let delete_event = event
-                        .clone()
-                        .try_into_variant::<UserDeleted>()
-                        .map_err(|_| EventError::ConversionError("Event<UserEventData>", "Event<UserDeleted>"))?;
+                    let delete_event =
+                        event
+                            .clone()
+                            .try_into_variant::<UserDeleted>()
+                            .map_err(|_| {
+                                EventError::ConversionError(
+                                    "Event<UserEventData>",
+                                    "Event<UserDeleted>",
+                                )
+                            })?;
 
                     entity
                         .ok_or(EventError::MissingEntity("User", "UserDeleted"))?
