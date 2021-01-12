@@ -30,7 +30,7 @@ impl ConflictEntityBuilder<UserEventData, UserEventData> for User {}
 
 /// Make events on User conflict-checkable.
 impl ConflictCheck<UserEventData> for UserEventData {
-    fn conflict_check(
+    fn check_conflict(
         self,
         applied_event: &Event<UserEventData>,
     ) -> Result<Self, ConflictData<UserEventData, Self>> {
@@ -261,7 +261,7 @@ fn conflicting_updates() -> Result<(), EventError> {
     // check for conflicts and applly the event
     match event_data_conflicting
         .clone()
-        .conflict_check(&action_builder_applied.event)
+        .check_conflict(&action_builder_applied.event)
     {
         Ok(event_data) => {
             let event_builder_nonconflicted = event_data.clone().into_builder();
@@ -315,7 +315,7 @@ fn conflicting_updates() -> Result<(), EventError> {
             let event_builder_conflicted = conflict_data.into_builder();
             let conflict_builder_conflicted = action_builder_applied
                 .entity
-                .try_conflict(event_builder_conflicted)?;
+                .try_flag_conflict(event_builder_conflicted)?;
 
             // StorageBuilder {
             //     event: Event {

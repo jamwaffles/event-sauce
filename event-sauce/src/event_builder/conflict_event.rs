@@ -33,12 +33,12 @@ where
 
     /// Workaround method to get an entity ID out of entities when implementing
     /// `ConflictEntityBuilder`
-    pub(crate) fn build_with_entity_id(self, entity_id: Uuid) -> Event<ConflictData<EDA, EDC>> {
+    pub(crate) fn build_with_entity_id(self) -> Event<ConflictData<EDA, EDC>> {
         Event {
             id: Uuid::new_v4(),
             event_type: String::from(self.payload.event_type()),
             entity_type: EDA::Entity::entity_type(),
-            entity_id,
+            entity_id: self.payload.applied_event.entity_id,
             session_id: self.session_id,
             purger_id: None,
             created_at: Utc::now(),

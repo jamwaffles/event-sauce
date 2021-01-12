@@ -80,7 +80,7 @@ where
     /// place of `EDC`, describing the conflict otherwise.
     ///
     /// This function will be called during [`UpdateEntityBuilder::try_update`](trait.UpdateEntityBuilder.html#method.try_update).
-    fn conflict_check(self, applied_event: &Event<EDA>) -> Result<Self, ConflictData<EDA, Self>>;
+    fn check_conflict(self, applied_event: &Event<EDA>) -> Result<Self, ConflictData<EDA, Self>>;
 }
 
 /// Deifintion of `EventData` for conflict `Event`
@@ -88,7 +88,7 @@ where
 /// The `ConflictData` is the [`EventData`] struct, which is created when there is an [`Event`]
 /// being applied to an [`Entity`](trait.Entity.html), applying of which is in conflict with
 /// another already applied `Event`.  The presence of such conflict is determined by the
-/// implementation of [`ConflictCheck::conflict_check`] for the `EventData` being applied.
+/// implementation of [`ConflictCheck::check_conflict`] for the `EventData` being applied.
 ///
 /// The `ConflictData` refers to the `Event` that has already been applied and the `EventData` of
 /// the would-be `Event`, which could not be applied due to the conflict.
@@ -316,14 +316,14 @@ where
     EDC: EventData,
 {
     /// Conflict the entity with an event
-    fn try_conflict<B>(
+    fn try_flag_conflict<B>(
         self,
         builder: B,
     ) -> Result<StorageBuilder<Self, ConflictData<EDA, EDC>>, Self::Error>
     where
         B: Into<ConflictEventBuilder<EDA, EDC>>,
     {
-        let event = builder.into().build_with_entity_id(self.entity_id());
+        let event = builder.into().build_with_entity_id();
 
         let entity = self.try_aggregate_conflict(&event)?;
 
