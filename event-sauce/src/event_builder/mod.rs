@@ -1,4 +1,5 @@
 mod action_event;
+mod conflict_event;
 mod create_event;
 mod delete_event;
 mod purge_event;
@@ -7,6 +8,7 @@ mod update_event;
 use uuid::Uuid;
 
 pub use action_event::ActionEventBuilder;
+pub use conflict_event::ConflictEventBuilder;
 pub use create_event::CreateEventBuilder;
 pub use delete_event::DeleteEventBuilder;
 pub use purge_event::PurgeEventBuilder;
