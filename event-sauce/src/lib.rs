@@ -19,12 +19,12 @@ pub use crate::{
     db_event::DBEvent,
     event::Event,
     event_builder::{
-        ActionEventBuilder, CreateEventBuilder, DeleteEventBuilder, EventBuilder,
-        PurgeEventBuilder, UpdateEventBuilder,
+        ActionEventBuilder, ConflictEventBuilder, CreateEventBuilder, DeleteEventBuilder,
+        EventBuilder, PurgeEventBuilder, UpdateEventBuilder,
     },
     triggers::{OnCreated, OnUpdated},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// An entity to apply events to
@@ -68,6 +68,61 @@ pub trait EventData: Serialize + Sized {
 
 /// Event payloads that can be different variants of an enum.
 pub trait EnumEventData: EventData {}
+
+/// The `EventData` of the `Event` that can be conflicted with an already applied `Event<EDA>`.
+pub trait ConflictCheck<EDA>: EventData
+where
+    EDA: EventData,
+{
+    /// Check if applying `self` is in conflict with an already `applied_event`.
+    ///
+    /// Returns either `Ok(EventData)` in case of no conflicts or [`ConflictData`] with `Self` in
+    /// place of `EDC`, describing the conflict otherwise.
+    ///
+    /// This function will be called during [`UpdateEntityBuilder::try_update`](trait.UpdateEntityBuilder.html#method.try_update).
+    fn check_conflict(self, applied_event: &Event<EDA>) -> Result<Self, ConflictData<EDA, Self>>;
+}
+
+/// Deifintion of `EventData` for conflict `Event`
+///
+/// The `ConflictData` is the [`EventData`] struct, which is created when there is an [`Event`]
+/// being applied to an [`Entity`](trait.Entity.html), applying of which is in conflict with
+/// another already applied `Event`.  The presence of such conflict is determined by the
+/// implementation of [`ConflictCheck::check_conflict`] for the `EventData` being applied.
+///
+/// The `ConflictData` refers to the `Event` that has already been applied and the `EventData` of
+/// the would-be `Event`, which could not be applied due to the conflict.
+///
+/// Generic type parameters:
+/// * `EDA` (Event Data Applied) represents the previously applied `EventData`.
+/// * `EDC` (Event Data Conflicting) represents the new, conflicting `EventData` that could not be
+///   applied due to a conflict with the already applied `Event<EDA>`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConflictData<EDA, EDC>
+where
+    EDA: EventData,
+    EDC: EventData,
+{
+    /// The `Event` that has already been applied in the past.
+    pub applied_event: Event<EDA>,
+
+    /// The conflicting Event data that can not be applied due to the conflict with the [`applied_event`](struct.ConflictData.html#structfield.applied_event).
+    pub conflicting_event_data: EDC,
+}
+
+impl<EDA, EDC> EventData for ConflictData<EDA, EDC>
+where
+    EDA: EventData,
+    EDC: EventData,
+{
+    type Entity = EDA::Entity;
+
+    type Builder = ConflictEventBuilder<EDA, EDC>;
+
+    fn event_type(&self) -> &'static str {
+        "ConflictData"
+    }
+}
 
 /// A trait implemented for any item that can be persisted to a backing store
 #[async_trait::async_trait]
@@ -141,6 +196,25 @@ where
     fn try_aggregate_delete(self, _event: &Event<ED>) -> Result<Self, Self::Error> {
         Ok(self)
     }
+}
+
+/// Add the ability to conflict an existing entity from a given event
+pub trait AggregateConflict<EDA, EDC>: Sized
+where
+    EDA: EventData,
+    EDC: EventData,
+{
+    /// The error type to return when the entity could not be updated
+    type Error;
+
+    /// Attempt to apply the passed event to this entity
+    ///
+    /// Implementation of this function should set the "merge conflict" flag,
+    /// or some moral equivalent of it.
+    fn try_aggregate_conflict(
+        self,
+        event: &Event<ConflictData<EDA, EDC>>,
+    ) -> Result<Self, Self::Error>;
 }
 
 /// Add the ability to action an entity
@@ -235,6 +309,28 @@ where
     }
 }
 
+/// A wrapper trait around [`AggregateConflict`] to handle event-sauce integration boilerplate
+pub trait ConflictEntityBuilder<EDA, EDC>: AggregateConflict<EDA, EDC> + Entity
+where
+    EDA: EventData,
+    EDC: EventData,
+{
+    /// Conflict the entity with an event
+    fn try_flag_conflict<B>(
+        self,
+        builder: B,
+    ) -> Result<StorageBuilder<Self, ConflictData<EDA, EDC>>, Self::Error>
+    where
+        B: Into<ConflictEventBuilder<EDA, EDC>>,
+    {
+        let event = builder.into().build_with_entity_id();
+
+        let entity = self.try_aggregate_conflict(&event)?;
+
+        Ok(StorageBuilder::new(entity, event))
+    }
+}
+
 /// A wrapper trait around [`AggregateAction`] to handle event-sauce integration boilerplate
 pub trait ActionEntityBuilder<EDENUM>: AggregateAction<EDENUM> + Entity
 where
@@ -278,6 +374,7 @@ pub trait StorageBackendTransaction {
 
 /// A wrapper around a tuple of event and entity, used to persist them to the database at the same
 /// time.
+#[derive(Debug)]
 pub struct StorageBuilder<Ent, ED: EventData> {
     /// Event to persist
     pub event: Event<ED>,
@@ -320,7 +417,7 @@ where
 pub struct ActionBuilder<E, EDENUM>
 where
     E: Entity,
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// Event to action
     pub event: Event<EDENUM>,
@@ -332,7 +429,7 @@ where
 impl<EDENUM, E> ActionBuilder<E, EDENUM>
 where
     E: Entity,
-    EDENUM: EventData,
+    EDENUM: EnumEventData,
 {
     /// Create a new entity/event pair
     pub fn new(entity: E, event: Event<EDENUM>) -> Self {

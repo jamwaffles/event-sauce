@@ -4,6 +4,7 @@ use chrono::Utc;
 use uuid::Uuid;
 
 /// Generic event builder for an action specified by its EventData
+#[derive(Debug)]
 pub struct ActionEventBuilder<EDENUM>
 where
     EDENUM: EnumEventData,

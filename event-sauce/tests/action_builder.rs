@@ -25,32 +25,46 @@ impl AggregateAction<UserEventData> for User {
         if let Some(ref data) = event.data {
             match data {
                 UserEventData::UserCreated(_) => {
-                    // let create_event = event.clone().into_event::<UserCreated>(Some(data.clone()));
-                    let create_event = event
-                        .clone()
-                        .try_into_variant::<UserCreated>()
-                        // TODO: Better error variant
-                        .map_err(|_e| EventError::Infallible())?;
+                    let create_event =
+                        event
+                            .clone()
+                            .try_into_variant::<UserCreated>()
+                            .map_err(|_| {
+                                EventError::ConversionError(
+                                    "Event<UserEventData>",
+                                    "Event<UserCreated>",
+                                )
+                            })?;
 
                     Self::try_aggregate_create(&create_event)
                 }
                 UserEventData::UserUpdated(_) => {
-                    let update_event = event
-                        .clone()
-                        .try_into_variant::<UserUpdated>()
-                        // TODO: Better error variant
-                        .map_err(|_e| EventError::Infallible())?;
+                    let update_event =
+                        event
+                            .clone()
+                            .try_into_variant::<UserUpdated>()
+                            .map_err(|_| {
+                                EventError::ConversionError(
+                                    "Event<UserEventData>",
+                                    "Event<UserUpdated>",
+                                )
+                            })?;
 
                     entity
                         .ok_or(EventError::MissingEntity("User", "UserUpdated"))?
                         .try_aggregate_update(&update_event)
                 }
                 UserEventData::UserDeleted(_) => {
-                    let delete_event = event
-                        .clone()
-                        .try_into_variant::<UserDeleted>()
-                        // TODO: Better error variant
-                        .map_err(|_e| EventError::Infallible())?;
+                    let delete_event =
+                        event
+                            .clone()
+                            .try_into_variant::<UserDeleted>()
+                            .map_err(|_| {
+                                EventError::ConversionError(
+                                    "Event<UserEventData>",
+                                    "Event<UserDeleted>",
+                                )
+                            })?;
 
                     entity
                         .ok_or(EventError::MissingEntity("User", "UserDeleted"))?
@@ -62,7 +76,7 @@ impl AggregateAction<UserEventData> for User {
             // If payload is empty, this event is a noop
             Ok(entity)
         } else {
-            Err(EventError::MissingEntity("User", ""))
+            Err(EventError::MissingEntity("User", "N/A"))
         }
     }
 }
@@ -158,6 +172,9 @@ pub enum EventError {
     /// The event data payload is empty.
     #[error("Entity {0} is required for action {1}")]
     MissingEntity(&'static str, &'static str),
+    /// Conversion error.
+    #[error("Can not convert {0} into {1}")]
+    ConversionError(&'static str, &'static str),
     /// An error that shall never occur :crossed_fingers:
     #[error("Fehler fehler fehler fehler!")]
     Infallible(),
