@@ -13,7 +13,8 @@
 #![deny(broken_intra_doc_links)]
 
 // use event_sauce::DeleteBuilderPersist;
-// use event_sauce::StorageBackendTransaction;
+use event_sauce::StorageBackend;
+use event_sauce::StorageBackendTransaction;
 // use event_sauce::StorageBuilderPersist;
 // use event_sauce::StoreToTransaction;
 // use event_sauce::{
@@ -42,11 +43,11 @@ impl SqlxPgStore {
     }
 }
 
-// #[async_trait::async_trait]
-// impl StorageBackend for SqlxPgStore {
-//     type Error = sqlx::Error;
-//     type Transaction = SqlxPgStoreTransaction;
-// }
+#[async_trait::async_trait]
+impl<'c> StorageBackend<'c> for SqlxPgStore {
+    type Error = sqlx::Error;
+    type Transaction = SqlxPgStoreTransaction<'c>;
+}
 
 /// TODO: Docs
 pub struct SqlxPgStoreTransaction<'c>(Transaction<'c, Postgres>);
@@ -65,9 +66,9 @@ impl<'c> SqlxPgStoreTransaction<'c> {
     }
 }
 
-// impl StorageBackendTransaction for SqlxPgStoreTransaction {
-//     type Error = sqlx::Error;
-// }
+impl StorageBackendTransaction for SqlxPgStoreTransaction<'_> {
+    type Error = sqlx::Error;
+}
 
 impl SqlxPgStore {
     /// Create a new backing store instance with a given [`PgPool`](sqlx::PgPool)
