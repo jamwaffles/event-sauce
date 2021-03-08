@@ -9,21 +9,13 @@
 #![deny(missing_docs)]
 #![deny(broken_intra_doc_links)]
 
-// mod db_event;
-// mod event;
+mod db_event;
+mod event;
 // mod event_builder;
 // pub mod prelude;
 // mod triggers;
 
-// pub use crate::{
-//     db_event::DBEvent,
-//     event::Event,
-//     event_builder::{
-//         ActionEventBuilder, ConflictEventBuilder, CreateEventBuilder, DeleteEventBuilder,
-//         EventBuilder, PurgeEventBuilder, UpdateEventBuilder,
-//     },
-//     triggers::{OnCreated, OnUpdated},
-// };
+pub use crate::db_event::DBEvent;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -41,33 +33,33 @@ use uuid::Uuid;
 //     fn entity_id(&self) -> Uuid;
 // }
 
-// /// An event's data payload
-// pub trait EventData: Serialize + Sized {
-//     /// The entity to bind this event to
-//     type Entity: Entity;
+/// An event's data payload
+pub trait EventData: Serialize + Sized {
+    // /// The entity to bind this event to
+    // type Entity: Entity;
 
-//     /// The type of builder this event can be used with
-//     type Builder: EventBuilder<Self>;
+    // /// The type of builder this event can be used with
+    // type Builder: EventBuilder<Self>;
 
-//     /// Get the event type/identifier in PascalCase like `UserCreated` or `PasswordChanged`
-//     fn event_type(&self) -> &'static str;
+    // /// Get the event type/identifier in PascalCase like `UserCreated` or `PasswordChanged`
+    // fn event_type(&self) -> &'static str;
 
-//     /// Convert the event into a builder with a given session ID
-//     ///
-//     /// This is a convenience method to shorten `Event {}.into_builder().session_id(id)` to
-//     /// `Event {}.with_session_id(id)`.
-//     fn with_session_id(self, session_id: Uuid) -> Self::Builder {
-//         Self::Builder::new(self).session_id(session_id)
-//     }
+    // /// Convert the event into a builder with a given session ID
+    // ///
+    // /// This is a convenience method to shorten `Event {}.into_builder().session_id(id)` to
+    // /// `Event {}.with_session_id(id)`.
+    // fn with_session_id(self, session_id: Uuid) -> Self::Builder {
+    //     Self::Builder::new(self).session_id(session_id)
+    // }
 
-//     /// Convert the event into a builder
-//     fn into_builder(self) -> Self::Builder {
-//         Self::Builder::new(self)
-//     }
-// }
+    // /// Convert the event into a builder
+    // fn into_builder(self) -> Self::Builder {
+    //     Self::Builder::new(self)
+    // }
+}
 
-// /// Event payloads that can be different variants of an enum.
-// pub trait EnumEventData: EventData {}
+/// Event payloads that can be different variants of an enum.
+pub trait EnumEventData: EventData {}
 
 // /// The `EventData` of the `Event` that can be conflicted with an already applied `Event<EDA>`.
 // pub trait ConflictCheck<EDA>: EventData
@@ -124,17 +116,17 @@ use uuid::Uuid;
 //     }
 // }
 
-// /// A trait implemented for any item that can be persisted to a backing store
-// #[async_trait::async_trait]
-// pub trait Persistable<Txn, Out = Self>: Sized
-// where
-//     Txn: StorageBackendTransaction,
-// {
-//     /// Save or update the entity
-//     ///
-//     /// This method must be idempotent.
-//     async fn persist(self, store: &mut Txn) -> Result<Out, Txn::Error>;
-// }
+/// A trait implemented for any item that can be persisted to a backing store
+#[async_trait::async_trait]
+pub trait Persistable<'a, Txn, Out = Self>: Sized
+where
+    Txn: StorageBackendTransaction,
+{
+    /// Save or update the entity
+    ///
+    /// This method must be idempotent.
+    async fn persist(self, store: &mut Txn) -> Result<Out, Txn::Error>;
+}
 
 // /// Implemented for all entities that can be removed or otherwise marked as deleted in the database
 // #[async_trait::async_trait]

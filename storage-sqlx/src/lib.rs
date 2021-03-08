@@ -13,8 +13,8 @@
 #![deny(broken_intra_doc_links)]
 
 // use event_sauce::DeleteBuilderPersist;
-use event_sauce::StorageBackend;
-use event_sauce::StorageBackendTransaction;
+use event_sauce::{DBEvent, StorageBackend};
+use event_sauce::{Persistable, StorageBackendTransaction};
 // use event_sauce::StorageBuilderPersist;
 // use event_sauce::StoreToTransaction;
 // use event_sauce::{
@@ -107,47 +107,47 @@ impl SqlxPgStore {
     }
 }
 
-// #[async_trait::async_trait]
-// impl Persistable<SqlxPgStoreTransaction, DBEvent> for DBEvent {
-//     async fn persist(self, store: &mut SqlxPgStoreTransaction) -> Result<Self, sqlx::Error> {
-//         let saved: Self = sqlx::query_as(
-//             r#"insert into events (
-//                 id,
-//                 event_type,
-//                 entity_type,
-//                 entity_id,
-//                 data,
-//                 session_id,
-//                 created_at
-//             ) values (
-//                 $1,
-//                 $2,
-//                 $3,
-//                 $4,
-//                 $5,
-//                 $6,
-//                 $7
-//             )
-//             on conflict (id)
-//             do update set
-//             data = excluded.data
-//             returning *"#,
-//         )
-//         .bind(self.id)
-//         .bind(self.event_type)
-//         .bind(self.entity_type)
-//         .bind(self.entity_id)
-//         .bind(self.data)
-//         .bind(self.session_id)
-//         .bind(self.created_at)
-//         .fetch_one(store.get())
-//         .await?;
+#[async_trait::async_trait]
+impl<'a> Persistable<'a, SqlxPgStoreTransaction<'a>, DBEvent> for DBEvent {
+    async fn persist(self, store: &mut SqlxPgStoreTransaction<'a>) -> Result<Self, sqlx::Error> {
+        let saved: Self = sqlx::query_as(
+            r#"insert into events (
+                id,
+                event_type,
+                entity_type,
+                entity_id,
+                data,
+                session_id,
+                created_at
+            ) values (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7
+            )
+            on conflict (id)
+            do update set
+            data = excluded.data
+            returning *"#,
+        )
+        .bind(self.id)
+        .bind(self.event_type)
+        .bind(self.entity_type)
+        .bind(self.entity_id)
+        .bind(self.data)
+        .bind(self.session_id)
+        .bind(self.created_at)
+        .fetch_one(store.get())
+        .await?;
 
-//         log::trace!("Persisted event {}: {:?}", saved.id, saved);
+        log::trace!("Persisted event {}: {:?}", saved.id, saved);
 
-//         Ok(saved)
-//     }
-// }
+        Ok(saved)
+    }
+}
 
 // #[async_trait::async_trait]
 // impl<E, ED> StorageBuilderPersist<SqlxPgStore, E> for StorageBuilder<E, ED>
