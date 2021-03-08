@@ -2,12 +2,12 @@
 
 use crate::{db_event::DBEvent, EnumEventData, EventData};
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use uuid::Uuid;
 
 /// Event definition
-#[derive(Debug, Clone, PartialEq, serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Event<D>
 where
     D: EventData,

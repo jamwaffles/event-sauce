@@ -94,8 +94,8 @@ pub struct User {
     Debug,
     Clone,
     PartialEq,
-    serde_derive::Serialize,
-    serde_derive::Deserialize,
+    serde::Serialize,
+    serde::Deserialize,
     event_sauce_derive::CreateEventData,
 )]
 #[event_sauce(User)]
@@ -123,8 +123,8 @@ impl AggregateCreate<UserCreated> for User {
     Debug,
     Clone,
     PartialEq,
-    serde_derive::Serialize,
-    serde_derive::Deserialize,
+    serde::Serialize,
+    serde::Deserialize,
     event_sauce_derive::UpdateEventData,
 )]
 #[event_sauce(User)]
@@ -152,8 +152,8 @@ impl AggregateUpdate<UserUpdated> for User {
     Debug,
     Clone,
     PartialEq,
-    serde_derive::Serialize,
-    serde_derive::Deserialize,
+    serde::Serialize,
+    serde::Deserialize,
     event_sauce_derive::DeleteEventData,
 )]
 #[event_sauce(User)]

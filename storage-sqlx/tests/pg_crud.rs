@@ -8,7 +8,7 @@ use event_sauce_storage_sqlx::SqlxPgStore;
 use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
-#[derive(serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow)]
+#[derive(serde::Serialize, serde::Deserialize, sqlx::FromRow)]
 struct User {
     id: Uuid,
     name: String,
@@ -26,7 +26,7 @@ impl Entity for User {
 impl CreateEntityBuilder<UserCreated> for User {}
 impl UpdateEntityBuilder<UserEmailChanged> for User {}
 
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct UserCreated {
     name: String,
     email: String,
@@ -41,7 +41,7 @@ impl EventData for UserCreated {
     }
 }
 
-#[derive(serde_derive::Serialize, serde_derive::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct UserEmailChanged {
     email: String,
 }

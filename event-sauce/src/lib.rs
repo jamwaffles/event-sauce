@@ -16,10 +16,10 @@ pub mod prelude;
 mod triggers;
 
 pub use crate::db_event::DBEvent;
-use event::Event;
-use event_builder::{ActionEventBuilder, PurgeEventBuilder};
+pub use event::Event;
 pub use event_builder::{
-    ConflictEventBuilder, CreateEventBuilder, DeleteEventBuilder, EventBuilder, UpdateEventBuilder,
+    ActionEventBuilder, ConflictEventBuilder, CreateEventBuilder, DeleteEventBuilder, EventBuilder,
+    PurgeEventBuilder, UpdateEventBuilder,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

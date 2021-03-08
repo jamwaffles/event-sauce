@@ -8,8 +8,8 @@ use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
 #[derive(
-    serde_derive::Serialize,
-    serde_derive::Deserialize,
+    serde::Serialize,
+    serde::Deserialize,
     sqlx::FromRow,
     event_sauce_derive::Entity,
     PartialEq,
@@ -23,40 +23,30 @@ struct User {
     email: String,
 }
 
-#[derive(
-    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::CreateEventData,
-)]
+#[derive(serde::Serialize, serde::Deserialize, event_sauce_derive::CreateEventData)]
 #[event_sauce(User)]
 struct UserCreated {
     name: String,
     email: String,
 }
 
-#[derive(
-    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::UpdateEventData,
-)]
+#[derive(serde::Serialize, serde::Deserialize, event_sauce_derive::UpdateEventData)]
 #[event_sauce(User)]
 struct UserEmailChanged {
     email: String,
 }
 
 /// Empty create event to test compilation works with unit structs
-#[derive(
-    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::CreateEventData,
-)]
+#[derive(serde::Serialize, serde::Deserialize, event_sauce_derive::CreateEventData)]
 #[event_sauce(User)]
 struct TestUnitStructCreate;
 
 /// Empty update event to test compilation works with unit structs
-#[derive(
-    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::UpdateEventData,
-)]
+#[derive(serde::Serialize, serde::Deserialize, event_sauce_derive::UpdateEventData)]
 #[event_sauce(User)]
 struct TestUnitStructUpdate;
 
-#[derive(
-    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::DeleteEventData,
-)]
+#[derive(serde::Serialize, serde::Deserialize, event_sauce_derive::DeleteEventData)]
 #[event_sauce(User)]
 struct UserDeleted;
 

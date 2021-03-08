@@ -28,8 +28,8 @@ use uuid::Uuid;
 /// }
 ///
 /// #[derive(
-///     serde_derive::Serialize,
-///     serde_derive::Deserialize,
+///     serde::Serialize,
+///     serde::Deserialize,
 ///     event_sauce_derive::PurgeEventData,
 ///     Clone,
 ///     Debug,

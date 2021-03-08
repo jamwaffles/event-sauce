@@ -5,8 +5,8 @@ use sqlx::{postgres::PgQueryAs, PgPool};
 use uuid::Uuid;
 
 #[derive(
-    serde_derive::Serialize,
-    serde_derive::Deserialize,
+    serde::Serialize,
+    serde::Deserialize,
     sqlx::FromRow,
     event_sauce_derive::Entity,
     PartialEq,
@@ -21,9 +21,7 @@ struct User {
 }
 
 /// The event used to create users in this test suite
-#[derive(
-    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::CreateEventData,
-)]
+#[derive(serde::Serialize, serde::Deserialize, event_sauce_derive::CreateEventData)]
 #[event_sauce(User)]
 struct UserCreated {
     name: String,
@@ -48,7 +46,7 @@ impl AggregateCreate<UserCreated> for User {
 }
 
 /// Event used to purge users in this test suite.
-#[derive(serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::PurgeEventData)]
+#[derive(serde::Serialize, serde::Deserialize, event_sauce_derive::PurgeEventData)]
 #[event_sauce(User)]
 struct UserPurged;
 
