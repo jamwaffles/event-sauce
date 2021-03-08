@@ -14,8 +14,8 @@
 
 // use event_sauce::DeleteBuilderPersist;
 use event_sauce::{
-    DBEvent, Deletable, DeleteBuilder, DeleteBuilderPersist, EventData, StorageBackend,
-    StorageBuilder, StorageBuilderPersist,
+    DBEvent, Deletable, DeleteBuilder, DeleteBuilderPersist, Entity, EventData, PurgeBuilder,
+    PurgeBuilderExecute, StorageBackend, StorageBuilder, StorageBuilderPersist,
 };
 use event_sauce::{Persistable, StorageBackendTransaction};
 // use event_sauce::StorageBuilderPersist;
@@ -111,8 +111,8 @@ impl SqlxPgStore {
 }
 
 #[async_trait::async_trait]
-impl<'a> Persistable<SqlxPgStoreTransaction<'a>, DBEvent> for DBEvent {
-    async fn persist(self, store: &mut SqlxPgStoreTransaction<'a>) -> Result<Self, sqlx::Error> {
+impl<'c> Persistable<SqlxPgStoreTransaction<'c>, DBEvent> for DBEvent {
+    async fn persist(self, store: &mut SqlxPgStoreTransaction<'c>) -> Result<Self, sqlx::Error> {
         let saved: Self = sqlx::query_as(
             r#"insert into events (
                 id,
@@ -226,42 +226,47 @@ where
     }
 }
 
-// #[async_trait::async_trait]
-// impl<E, ED> PurgeBuilderExecute<SqlxPgStore> for PurgeBuilder<E, ED>
-// where
-//     E: Entity + Send + Sync,
-//     ED: EventData + Send,
-// {
-//     async fn stage_purge(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
-//         let db_event: DBEvent = self
-//             .event
-//             .try_into()
-//             .expect("Failed to convert Event into DBEvent");
+#[async_trait::async_trait]
+impl<'c, E, ED> PurgeBuilderExecute<'c, SqlxPgStore> for PurgeBuilder<E, ED>
+where
+    E: Entity + Send + Sync,
+    ED: EventData + Send,
+{
+    async fn stage_purge<'t: 'c>(
+        self,
+        tx: &'t mut SqlxPgStoreTransaction,
+    ) -> Result<(), sqlx::Error> {
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
 
-//         sqlx::query(&format!("delete from {} where id = $1", E::entity_type()))
-//             .bind(self.entity.entity_id())
-//             .execute(tx.get())
-//             .await?;
+        sqlx::query(&format!("delete from {} where id = $1", E::entity_type()))
+            .bind(self.entity.entity_id())
+            .execute(tx.get())
+            .await?;
 
-//         sqlx::query(
-//             "update events set data = null, purged_at = $1, purger_id = $2 where entity_id = $3",
-//         )
-//         .bind(db_event.created_at)
-//         .bind(db_event.session_id)
-//         .bind(self.entity.entity_id())
-//         .execute(tx.get())
-//         .await?;
+        sqlx::query(
+            "update events set data = null, purged_at = $1, purger_id = $2 where entity_id = $3",
+        )
+        .bind(db_event.created_at)
+        .bind(db_event.session_id)
+        .bind(self.entity.entity_id())
+        .execute(tx.get())
+        .await?;
 
-//         db_event.persist(tx).await?;
+        db_event.persist(tx).await?;
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     async fn purge(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
-//         let mut tx = store.transaction().await?;
+    // async fn purge<'s>(self, store: &'s SqlxPgStore) -> Result<(), sqlx::Error> {
+    //     let mut tx = store.transaction().await?;
 
-//         self.stage_purge(&mut tx).await?;
+    //     self.stage_purge(&mut tx).await?;
 
-//         tx.commit().await
-//     }
-// }
+    //     tx.commit().await?;
+
+    //     Ok(())
+    // }
+}
