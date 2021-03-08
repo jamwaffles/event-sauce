@@ -13,7 +13,10 @@
 #![deny(broken_intra_doc_links)]
 
 // use event_sauce::DeleteBuilderPersist;
-use event_sauce::{DBEvent, StorageBackend};
+use event_sauce::{
+    DBEvent, Deletable, DeleteBuilder, DeleteBuilderPersist, EventData, StorageBackend,
+    StorageBuilder, StorageBuilderPersist,
+};
 use event_sauce::{Persistable, StorageBackendTransaction};
 // use event_sauce::StorageBuilderPersist;
 // use event_sauce::StoreToTransaction;
@@ -108,7 +111,7 @@ impl SqlxPgStore {
 }
 
 #[async_trait::async_trait]
-impl<'a> Persistable<'a, SqlxPgStoreTransaction<'a>, DBEvent> for DBEvent {
+impl<'a> Persistable<SqlxPgStoreTransaction<'a>, DBEvent> for DBEvent {
     async fn persist(self, store: &mut SqlxPgStoreTransaction<'a>) -> Result<Self, sqlx::Error> {
         let saved: Self = sqlx::query_as(
             r#"insert into events (
@@ -149,79 +152,79 @@ impl<'a> Persistable<'a, SqlxPgStoreTransaction<'a>, DBEvent> for DBEvent {
     }
 }
 
-// #[async_trait::async_trait]
-// impl<E, ED> StorageBuilderPersist<SqlxPgStore, E> for StorageBuilder<E, ED>
-// where
-//     E: Persistable<SqlxPgStoreTransaction> + Send,
-//     ED: EventData + Send,
-// {
-//     async fn stage_persist(self, tx: &mut SqlxPgStoreTransaction) -> Result<E, sqlx::Error> {
-//         // TODO: Enum error type to handle this unwrap
-//         let db_event: DBEvent = self
-//             .event
-//             .try_into()
-//             .expect("Failed to convert Event into DBEvent");
+#[async_trait::async_trait]
+impl<'c, E, ED> StorageBuilderPersist<'c, SqlxPgStore, E> for StorageBuilder<E, ED>
+where
+    E: Persistable<SqlxPgStoreTransaction<'c>> + Send,
+    ED: EventData + Send,
+{
+    async fn stage_persist(self, tx: &'c mut SqlxPgStoreTransaction<'c>) -> Result<E, sqlx::Error> {
+        // TODO: Enum error type to handle this unwrap
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
 
-//         db_event.persist(tx).await?;
+        db_event.persist(tx).await?;
 
-//         self.entity.persist(tx).await
-//     }
+        self.entity.persist(tx).await
+    }
 
-//     async fn persist(self, store: &SqlxPgStore) -> Result<E, sqlx::Error> {
-//         let mut tx = store.transaction().await?;
+    async fn persist(self, store: &'c SqlxPgStore) -> Result<E, sqlx::Error> {
+        let mut tx = store.transaction().await?;
 
-//         // TODO: Enum error type to handle this unwrap
-//         let db_event: DBEvent = self
-//             .event
-//             .try_into()
-//             .expect("Failed to convert Event into DBEvent");
+        // TODO: Enum error type to handle this unwrap
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
 
-//         db_event.persist(&mut tx).await?;
+        db_event.persist(&mut tx).await?;
 
-//         let new = self.entity.persist(&mut tx).await?;
+        let new = self.entity.persist(&mut tx).await?;
 
-//         tx.commit().await?;
+        tx.commit().await?;
 
-//         Ok(new)
-//     }
-// }
+        Ok(new)
+    }
+}
 
-// #[async_trait::async_trait]
-// impl<E, ED> DeleteBuilderPersist<SqlxPgStore> for DeleteBuilder<E, ED>
-// where
-//     E: Deletable<SqlxPgStoreTransaction> + Send,
-//     ED: EventData + Send,
-// {
-//     async fn stage_delete(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
-//         // TODO: Enum error type to handle this unwrap
-//         let db_event: DBEvent = self
-//             .event
-//             .try_into()
-//             .expect("Failed to convert Event into DBEvent");
+#[async_trait::async_trait]
+impl<'c, E, ED> DeleteBuilderPersist<'c, SqlxPgStore> for DeleteBuilder<E, ED>
+where
+    E: Deletable<SqlxPgStoreTransaction<'c>> + Send,
+    ED: EventData + Send,
+{
+    async fn stage_delete(self, tx: &'c mut SqlxPgStoreTransaction<'c>) -> Result<(), sqlx::Error> {
+        // TODO: Enum error type to handle this unwrap
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
 
-//         db_event.persist(tx).await?;
+        db_event.persist(tx).await?;
 
-//         self.entity.delete(tx).await?;
+        self.entity.delete(tx).await?;
 
-//         Ok(())
-//     }
+        Ok(())
+    }
 
-//     async fn delete(self, store: &SqlxPgStore) -> Result<(), sqlx::Error> {
-//         let mut tx = store.transaction().await?;
+    async fn delete(self, store: &'c SqlxPgStore) -> Result<(), sqlx::Error> {
+        let mut tx = store.transaction().await?;
 
-//         // TODO: Enum error type to handle this unwrap
-//         let db_event: DBEvent = self
-//             .event
-//             .try_into()
-//             .expect("Failed to convert Event into DBEvent");
+        // TODO: Enum error type to handle this unwrap
+        let db_event: DBEvent = self
+            .event
+            .try_into()
+            .expect("Failed to convert Event into DBEvent");
 
-//         db_event.persist(&mut tx).await?;
+        db_event.persist(&mut tx).await?;
 
-//         self.entity.delete(&mut tx).await?;
+        self.entity.delete(&mut tx).await?;
 
-//         tx.commit().await
-//     }
-// }
+        tx.commit().await
+    }
+}
 
 // #[async_trait::async_trait]
 // impl<E, ED> PurgeBuilderExecute<SqlxPgStore> for PurgeBuilder<E, ED>

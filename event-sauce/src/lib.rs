@@ -16,22 +16,23 @@ mod event;
 // mod triggers;
 
 pub use crate::db_event::DBEvent;
+use event::Event;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-// /// An entity to apply events to
-// pub trait Entity {
-//     /// The type of this entity as a plural `underscore_case` string
-//     const ENTITY_TYPE: &'static str;
+/// An entity to apply events to
+pub trait Entity {
+    /// The type of this entity as a plural `underscore_case` string
+    const ENTITY_TYPE: &'static str;
 
-//     /// Get the `EVENT_TYPE` as a `String`
-//     fn entity_type() -> String {
-//         Self::ENTITY_TYPE.to_string()
-//     }
+    /// Get the `EVENT_TYPE` as a `String`
+    fn entity_type() -> String {
+        Self::ENTITY_TYPE.to_string()
+    }
 
-//     /// Get the ID of this entity
-//     fn entity_id(&self) -> Uuid;
-// }
+    /// Get the ID of this entity
+    fn entity_id(&self) -> Uuid;
+}
 
 /// An event's data payload
 pub trait EventData: Serialize + Sized {
@@ -118,7 +119,7 @@ pub trait EnumEventData: EventData {}
 
 /// A trait implemented for any item that can be persisted to a backing store
 #[async_trait::async_trait]
-pub trait Persistable<'a, Txn, Out = Self>: Sized
+pub trait Persistable<Txn, Out = Self>: Sized
 where
     Txn: StorageBackendTransaction,
 {
@@ -128,20 +129,20 @@ where
     async fn persist(self, store: &mut Txn) -> Result<Out, Txn::Error>;
 }
 
-// /// Implemented for all entities that can be removed or otherwise marked as deleted in the database
-// #[async_trait::async_trait]
-// pub trait Deletable<Txn>
-// where
-//     Txn: StorageBackendTransaction,
-// {
-//     /// Delete an entity
-//     ///
-//     /// Implementations of this method may either remove the entity from the database entirely, set
-//     /// a `deleted_at` column to the current time, or something else.
-//     /// Event data for the entity must always be retained. To fully delete the entity and any event
-//     /// data associated with it (to comply with the GDPR for example), see the [`PurgeEventBuilder`] and [`PurgeBuilderExecute`] traits.
-//     async fn delete(self, store: &mut Txn) -> Result<(), Txn::Error>;
-// }
+/// Implemented for all entities that can be removed or otherwise marked as deleted in the database
+#[async_trait::async_trait]
+pub trait Deletable<Txn>
+where
+    Txn: StorageBackendTransaction,
+{
+    /// Delete an entity
+    ///
+    /// Implementations of this method may either remove the entity from the database entirely, set
+    /// a `deleted_at` column to the current time, or something else.
+    /// Event data for the entity must always be retained. To fully delete the entity and any event
+    /// data associated with it (to comply with the GDPR for example), see the [`PurgeEventBuilder`] and [`PurgeBuilderExecute`] traits.
+    async fn delete(self, store: &mut Txn) -> Result<(), Txn::Error>;
+}
 
 // /// Add the ability to create a new entity from a given event
 // pub trait AggregateCreate<ED>: Sized
@@ -364,116 +365,116 @@ pub trait StorageBackendTransaction {
     type Error;
 }
 
-// /// A wrapper around a tuple of event and entity, used to persist them to the database at the same
-// /// time.
-// #[derive(Debug)]
-// pub struct StorageBuilder<Ent, ED: EventData> {
-//     /// Event to persist
-//     pub event: Event<ED>,
+/// A wrapper around a tuple of event and entity, used to persist them to the database at the same
+/// time.
+#[derive(Debug)]
+pub struct StorageBuilder<Ent, ED: EventData> {
+    /// Event to persist
+    pub event: Event<ED>,
 
-//     /// Entity to persist
-//     pub entity: Ent,
-// }
+    /// Entity to persist
+    pub entity: Ent,
+}
 
-// impl<ED, Ent> StorageBuilder<Ent, ED>
-// where
-//     ED: EventData,
-// {
-//     /// Create a new entity/event pair
-//     pub fn new(entity: Ent, event: Event<ED>) -> Self {
-//         Self { event, entity }
-//     }
-// }
+impl<ED, Ent> StorageBuilder<Ent, ED>
+where
+    ED: EventData,
+{
+    /// Create a new entity/event pair
+    pub fn new(entity: Ent, event: Event<ED>) -> Self {
+        Self { event, entity }
+    }
+}
 
-// /// A wrapper around a tuple of event and entity, used to delete an entity in the database
-// pub struct DeleteBuilder<Ent, ED: EventData> {
-//     /// Deletion event to persist
-//     pub event: Event<ED>,
+/// A wrapper around a tuple of event and entity, used to delete an entity in the database
+pub struct DeleteBuilder<Ent, ED: EventData> {
+    /// Deletion event to persist
+    pub event: Event<ED>,
 
-//     /// Entity to delete
-//     pub entity: Ent,
-// }
+    /// Entity to delete
+    pub entity: Ent,
+}
 
-// impl<ED, Ent> DeleteBuilder<Ent, ED>
-// where
-//     ED: EventData,
-// {
-//     /// Create a new entity/event pair
-//     pub fn new(entity: Ent, event: Event<ED>) -> Self {
-//         Self { event, entity }
-//     }
-// }
+impl<ED, Ent> DeleteBuilder<Ent, ED>
+where
+    ED: EventData,
+{
+    /// Create a new entity/event pair
+    pub fn new(entity: Ent, event: Event<ED>) -> Self {
+        Self { event, entity }
+    }
+}
 
-// /// A wrapper around a tuple of enum-event and entity, used to action the eventa according to its type.
-// #[derive(Debug)]
-// pub struct ActionBuilder<E, EDENUM>
-// where
-//     E: Entity,
-//     EDENUM: EnumEventData,
-// {
-//     /// Event to action
-//     pub event: Event<EDENUM>,
+/// A wrapper around a tuple of enum-event and entity, used to action the eventa according to its type.
+#[derive(Debug)]
+pub struct ActionBuilder<E, EDENUM>
+where
+    E: Entity,
+    EDENUM: EnumEventData,
+{
+    /// Event to action
+    pub event: Event<EDENUM>,
 
-//     /// Entity to action
-//     pub entity: E,
-// }
+    /// Entity to action
+    pub entity: E,
+}
 
-// impl<EDENUM, E> ActionBuilder<E, EDENUM>
-// where
-//     E: Entity,
-//     EDENUM: EnumEventData,
-// {
-//     /// Create a new entity/event pair
-//     pub fn new(entity: E, event: Event<EDENUM>) -> Self {
-//         Self { event, entity }
-//     }
-// }
+impl<EDENUM, E> ActionBuilder<E, EDENUM>
+where
+    E: Entity,
+    EDENUM: EnumEventData,
+{
+    /// Create a new entity/event pair
+    pub fn new(entity: E, event: Event<EDENUM>) -> Self {
+        Self { event, entity }
+    }
+}
 
-// /// DOCS
-// #[async_trait::async_trait]
-// pub trait StorageBuilderPersist<S, E>
-// where
-//     S: StorageBackend,
-//     E: Persistable<S::Transaction, E>,
-// {
-//     /// Stage a deletion in a given transaction
-//     async fn stage_persist(self, tx: &mut S::Transaction) -> Result<E, S::Error>;
+/// DOCS
+#[async_trait::async_trait]
+pub trait StorageBuilderPersist<'c, S, E>
+where
+    S: StorageBackend<'c>,
+    E: Persistable<S::Transaction, E>,
+{
+    /// Stage a deletion in a given transaction
+    async fn stage_persist(self, tx: &'c mut S::Transaction) -> Result<E, S::Error>;
 
-//     /// Delete immediately
-//     async fn persist(self, store: &S) -> Result<E, S::Error>;
-// }
+    /// Delete immediately
+    async fn persist(self, store: &'c S) -> Result<E, S::Error>;
+}
 
-// /// DOCS
-// #[async_trait::async_trait]
-// pub trait DeleteBuilderPersist<S>
-// where
-//     S: StorageBackend,
-// {
-//     /// Stage a deletion in a given transaction
-//     async fn stage_delete(self, tx: &mut S::Transaction) -> Result<(), S::Error>;
+/// DOCS
+#[async_trait::async_trait]
+pub trait DeleteBuilderPersist<'c, S>
+where
+    S: StorageBackend<'c>,
+{
+    /// Stage a deletion in a given transaction
+    async fn stage_delete(self, tx: &'c mut S::Transaction) -> Result<(), S::Error>;
 
-//     /// Delete immediately
-//     async fn delete(self, store: &S) -> Result<(), S::Error>;
-// }
+    /// Delete immediately
+    async fn delete(self, store: &'c S) -> Result<(), S::Error>;
+}
 
-// /// A wrapper around a tuple of event and entity, used to purge an entity in the database
-// pub struct PurgeBuilder<Ent: Entity, ED: EventData> {
-//     /// Purge event to persist
-//     pub event: Event<ED>,
-//     /// The entity to purge
-//     pub entity: Ent,
-// }
+/// A wrapper around a tuple of event and entity, used to purge an entity in the database
+pub struct PurgeBuilder<Ent: Entity, ED: EventData> {
+    /// Purge event to persist
+    pub event: Event<ED>,
+    /// The entity to purge
+    pub entity: Ent,
+}
 
-// impl<ED, Ent> PurgeBuilder<Ent, ED>
-// where
-//     ED: EventData,
-//     Ent: Entity,
-// {
-//     /// Create a new entity/event pair
-//     pub fn new(entity: Ent, event: Event<ED>) -> Self {
-//         Self { event, entity }
-//     }
-// }
+impl<ED, Ent> PurgeBuilder<Ent, ED>
+where
+    ED: EventData,
+    Ent: Entity,
+{
+    /// Create a new entity/event pair
+    pub fn new(entity: Ent, event: Event<ED>) -> Self {
+        Self { event, entity }
+    }
+}
 
 // /// Helper trait to purge entities
 // ///

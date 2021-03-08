@@ -13,17 +13,17 @@ required-features = [ "with-postgres" ]
 [dependencies]
 sqlx = { version = "0.5.1", features = ["uuid", "chrono", "macros", "json", "runtime-async-std-rustls"] }
 event-sauce = { version = "0.1.0", path = "../event-sauce", features = [ "sqlx" ] }
-async-trait = "0.1.29"
-uuid = "0.8.1"
-log = "0.4.8"
+async-trait = "0.1.48"
+uuid = "0.8.2"
+log = "0.4.14"
 
 [dev-dependencies]
-serde_derive = "1.0.105"
-serde = "1.0.105"
-serde_json = "1.0.50"
+serde_derive = "1.0.124"
+serde = "1.0.124"
+serde_json = "1.0.64"
 
 [dev-dependencies.async-std]
-version = "1.5.0"
+version = "1.9.0"
 features = ["attributes"]
 
 [dev-dependencies.event-sauce-derive]
