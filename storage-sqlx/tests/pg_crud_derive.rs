@@ -155,7 +155,7 @@ impl AggregateDelete<UserDeleted> for User {
 }
 
 async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
-    let postgres = PgPool::new("postgres://sauce:sauce@localhost/sauce")
+    let postgres = PgPool::connect("postgres://sauce:sauce@localhost:5433/sauce")
         .await
         .expect("Error creating postgres pool");
 
