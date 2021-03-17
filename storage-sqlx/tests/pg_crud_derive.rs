@@ -1,10 +1,9 @@
 use event_sauce::{
     prelude::*, AggregateCreate, AggregateDelete, AggregateUpdate, Deletable, Event, Persistable,
 };
-use event_sauce_storage_sqlx::SqlxPgStoreTransaction;
-// use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx::SqlxPgStore;
-use sqlx::{postgres::PgQueryAs, PgPool};
+use event_sauce_storage_sqlx::SqlxPgStoreTransaction;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(serde::Serialize, serde::Deserialize, sqlx::FromRow, event_sauce_derive::Entity)]
@@ -44,7 +43,7 @@ struct TestUnitStructUpdate;
 struct UserDeleted;
 
 #[async_trait::async_trait]
-impl Persistable<SqlxPgStoreTransaction, User> for User {
+impl<'c> Persistable<SqlxPgStoreTransaction, User> for User {
     async fn persist(self, tx: &mut SqlxPgStoreTransaction) -> Result<Self, sqlx::Error> {
         let blah = format!(
             "insert into {}
@@ -71,7 +70,7 @@ impl Persistable<SqlxPgStoreTransaction, User> for User {
 }
 
 #[async_trait::async_trait]
-impl Deletable<SqlxPgStoreTransaction> for User {
+impl<'c> Deletable<SqlxPgStoreTransaction> for User {
     async fn delete(self, tx: &mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
         sqlx::query(&format!(
             "delete from {} where id = $1",

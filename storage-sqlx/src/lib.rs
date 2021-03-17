@@ -12,22 +12,14 @@
 #![deny(missing_docs)]
 #![deny(broken_intra_doc_links)]
 
-// use event_sauce::DeleteBuilderPersist;
 use event_sauce::{
-    DBEvent, Deletable, DeleteBuilder, DeleteBuilderPersist, Entity, EventData, PurgeBuilder,
-    PurgeBuilderExecute, StorageBackend, StorageBuilder, StorageBuilderPersist,
+    DBEvent, Deletable, DeleteBuilder, DeleteBuilderPersist, Entity, EventData, Persistable,
+    PurgeBuilder, PurgeBuilderExecute, StorageBackend, StorageBackendTransaction, StorageBuilder,
+    StorageBuilderPersist,
 };
-use event_sauce::{Persistable, StorageBackendTransaction};
-// use event_sauce::StorageBuilderPersist;
-// use event_sauce::StoreToTransaction;
-// use event_sauce::{
-//     DBEvent, Deletable, DeleteBuilder, Entity, EventData, Persistable, PurgeBuilder,
-//     PurgeBuilderExecute, StorageBackend, StorageBuilder,
-// };
-use sqlx::PgConnection;
+use sqlx::PgPool;
+use sqlx::Postgres;
 use sqlx::Transaction;
-use sqlx::{pool::PoolConnection, Postgres};
-use sqlx::{query::QueryAs, PgPool};
 use std::convert::TryInto;
 
 /// [sqlx](https://docs.rs/sqlx)-based Postgres backing store
@@ -39,7 +31,7 @@ pub struct SqlxPgStore {
 
 impl SqlxPgStore {
     /// Create a new transaction
-    pub async fn transaction(&self) -> Result<SqlxPgStoreTransaction<'_>, sqlx::Error> {
+    pub async fn transaction(&self) -> Result<SqlxPgStoreTransaction, sqlx::Error> {
         let tx = self.pool.begin().await?;
 
         Ok(SqlxPgStoreTransaction(tx))
@@ -49,15 +41,15 @@ impl SqlxPgStore {
 #[async_trait::async_trait]
 impl<'c> StorageBackend<'c> for SqlxPgStore {
     type Error = sqlx::Error;
-    type Transaction = SqlxPgStoreTransaction<'c>;
+    type Transaction = SqlxPgStoreTransaction;
 }
 
 /// TODO: Docs
-pub struct SqlxPgStoreTransaction<'c>(Transaction<'c, Postgres>);
+pub struct SqlxPgStoreTransaction(Transaction<'static, Postgres>);
 
-impl<'c> SqlxPgStoreTransaction<'c> {
+impl<'c> SqlxPgStoreTransaction {
     /// TODO: Docs
-    pub fn get(&mut self) -> &mut Transaction<'c, Postgres> {
+    pub fn get(&'c mut self) -> &'c mut Transaction<'static, Postgres> {
         &mut self.0
     }
 
@@ -69,7 +61,7 @@ impl<'c> SqlxPgStoreTransaction<'c> {
     }
 }
 
-impl StorageBackendTransaction for SqlxPgStoreTransaction<'_> {
+impl StorageBackendTransaction for SqlxPgStoreTransaction {
     type Error = sqlx::Error;
 }
 
@@ -111,8 +103,8 @@ impl SqlxPgStore {
 }
 
 #[async_trait::async_trait]
-impl<'c> Persistable<SqlxPgStoreTransaction<'c>, DBEvent> for DBEvent {
-    async fn persist(self, store: &mut SqlxPgStoreTransaction<'c>) -> Result<Self, sqlx::Error> {
+impl<'c> Persistable<SqlxPgStoreTransaction, DBEvent> for DBEvent {
+    async fn persist(self, store: &mut SqlxPgStoreTransaction) -> Result<Self, sqlx::Error> {
         let saved: Self = sqlx::query_as(
             r#"insert into events (
                 id,
@@ -155,10 +147,10 @@ impl<'c> Persistable<SqlxPgStoreTransaction<'c>, DBEvent> for DBEvent {
 #[async_trait::async_trait]
 impl<'c, E, ED> StorageBuilderPersist<'c, SqlxPgStore, E> for StorageBuilder<E, ED>
 where
-    E: Persistable<SqlxPgStoreTransaction<'c>> + Send,
+    E: Persistable<SqlxPgStoreTransaction> + Send,
     ED: EventData + Send,
 {
-    async fn stage_persist(self, tx: &'c mut SqlxPgStoreTransaction<'c>) -> Result<E, sqlx::Error> {
+    async fn stage_persist(self, tx: &'c mut SqlxPgStoreTransaction) -> Result<E, sqlx::Error> {
         // TODO: Enum error type to handle this unwrap
         let db_event: DBEvent = self
             .event
@@ -192,10 +184,10 @@ where
 #[async_trait::async_trait]
 impl<'c, E, ED> DeleteBuilderPersist<'c, SqlxPgStore> for DeleteBuilder<E, ED>
 where
-    E: Deletable<SqlxPgStoreTransaction<'c>> + Send,
+    E: Deletable<SqlxPgStoreTransaction> + Send,
     ED: EventData + Send,
 {
-    async fn stage_delete(self, tx: &'c mut SqlxPgStoreTransaction<'c>) -> Result<(), sqlx::Error> {
+    async fn stage_delete(self, tx: &'c mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
         // TODO: Enum error type to handle this unwrap
         let db_event: DBEvent = self
             .event
@@ -232,10 +224,7 @@ where
     E: Entity + Send + Sync,
     ED: EventData + Send,
 {
-    async fn stage_purge<'t: 'c>(
-        self,
-        tx: &'t mut SqlxPgStoreTransaction,
-    ) -> Result<(), sqlx::Error> {
+    async fn stage_purge(self, tx: &'c mut SqlxPgStoreTransaction) -> Result<(), sqlx::Error> {
         let db_event: DBEvent = self
             .event
             .try_into()
@@ -260,13 +249,13 @@ where
         Ok(())
     }
 
-    // async fn purge<'s>(self, store: &'s SqlxPgStore) -> Result<(), sqlx::Error> {
-    //     let mut tx = store.transaction().await?;
+    async fn purge<'s>(self, store: &'s SqlxPgStore) -> Result<(), sqlx::Error> {
+        let mut tx = store.transaction().await?;
 
-    //     self.stage_purge(&mut tx).await?;
+        self.stage_purge(&mut tx).await?;
 
-    //     tx.commit().await?;
+        tx.commit().await?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 }

@@ -495,8 +495,8 @@ where
     S: StorageBackend<'c>,
 {
     /// Stage the entity purge in a given transaction
-    async fn stage_purge<'t: 'c>(self, tx: &'t mut S::Transaction) -> Result<(), S::Error>;
+    async fn stage_purge(self, tx: &'c mut S::Transaction) -> Result<(), S::Error>;
 
-    // /// Purge an entity
-    // async fn purge<'s>(self, store: &'s S) -> Result<(), S::Error>;
+    /// Purge an entity
+    async fn purge<'s>(self, store: &'s S) -> Result<(), S::Error>;
 }

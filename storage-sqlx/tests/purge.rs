@@ -1,7 +1,6 @@
 use event_sauce::{prelude::*, AggregateCreate, DBEvent, Event, Persistable};
 use event_sauce_storage_sqlx::{SqlxPgStore, SqlxPgStoreTransaction};
-// use event_sauce::UpdateEntity;
-use sqlx::{postgres::PgQueryAs, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(
@@ -51,7 +50,7 @@ impl AggregateCreate<UserCreated> for User {
 struct UserPurged;
 
 #[async_trait::async_trait]
-impl Persistable<SqlxPgStoreTransaction> for User {
+impl<'c> Persistable<SqlxPgStoreTransaction> for User {
     async fn persist(self, tx: &mut SqlxPgStoreTransaction) -> Result<Self, sqlx::Error> {
         let blah = format!(
             "insert into {}
