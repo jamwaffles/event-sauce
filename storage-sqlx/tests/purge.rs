@@ -1,7 +1,7 @@
 use event_sauce::{prelude::*, AggregateCreate, DBEvent, Event, Persistable};
 use event_sauce_storage_sqlx::{SqlxPgStore, SqlxPgStoreTransaction};
 // use event_sauce::UpdateEntity;
-use sqlx::{postgres::PgQueryAs, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(
@@ -48,7 +48,9 @@ impl AggregateCreate<UserCreated> for User {
 }
 
 /// Event used to purge users in this test suite.
-#[derive(serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::PurgeEventData)]
+#[derive(
+    serde_derive::Serialize, serde_derive::Deserialize, event_sauce_derive::PurgeEventData,
+)]
 #[event_sauce(User)]
 struct UserPurged;
 
@@ -80,7 +82,7 @@ impl Persistable<SqlxPgStoreTransaction> for User {
 }
 
 async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
-    let postgres = PgPool::new("postgres://sauce:sauce@localhost/sauce")
+    let postgres = PgPool::connect("postgres://sauce:sauce@localhost:5433/sauce")
         .await
         .expect("Error creating postgres pool");
 
