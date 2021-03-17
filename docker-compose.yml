@@ -3,7 +3,7 @@ services:
   postgres:
     image: "postgres:11-alpine"
     ports:
-      - "5433:5432"
+      - "5432:5432"
     environment:
       POSTGRES_DB: sauce
       POSTGRES_USER: sauce

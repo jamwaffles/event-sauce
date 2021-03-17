@@ -82,7 +82,7 @@ impl Persistable<SqlxPgStoreTransaction> for User {
 }
 
 async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
-    let postgres = PgPool::connect("postgres://sauce:sauce@localhost:5433/sauce")
+    let postgres = PgPool::connect("postgres://sauce:sauce@localhost:5432/sauce")
         .await
         .expect("Error creating postgres pool");
 
