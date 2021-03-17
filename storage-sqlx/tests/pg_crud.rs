@@ -5,7 +5,7 @@ use event_sauce::{
 use event_sauce_storage_sqlx::SqlxPgStoreTransaction;
 // use event_sauce::UpdateEntity;
 use event_sauce_storage_sqlx::SqlxPgStore;
-use sqlx::{postgres::PgQueryAs, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(serde_derive::Serialize, serde_derive::Deserialize, sqlx::FromRow)]
@@ -133,7 +133,7 @@ impl AggregateUpdate<UserEmailChanged> for User {
 }
 
 async fn connect() -> Result<SqlxPgStore, sqlx::Error> {
-    let postgres = PgPool::new("postgres://sauce:sauce@localhost/sauce")
+    let postgres = PgPool::connect("postgres://sauce:sauce@localhost:5432/sauce")
         .await
         .expect("Error creating postgres pool");
 

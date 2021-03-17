@@ -20,11 +20,11 @@ circle-ci = { repository = "jamwaffles/event-sauce", branch = "master" }
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-quote = "1.0.3"
-proc-macro2 = "1.0.10"
+quote = "1.0.9"
+proc-macro2 = "1.0.24"
 
 [dependencies.syn]
-version = "1.0.17"
+version = "1.0.64"
 features = ["parsing"]
 
 [lib]
