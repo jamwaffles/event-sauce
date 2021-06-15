@@ -1,6 +1,0 @@
-[workspace]
-members = [
-    "event-sauce",
-    "event-sauce-derive",
-    "storage-sqlx"
-]
