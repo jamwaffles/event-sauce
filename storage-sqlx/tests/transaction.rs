@@ -121,6 +121,7 @@ impl AggregateCreate<UserCreated> for User {
 
 impl AggregateUpdate<UserEmailChanged> for User {
     type Error = &'static str;
+    type Output = Self;
 
     fn try_aggregate_update(self, event: &Event<UserEmailChanged>) -> Result<Self, Self::Error> {
         let data = event
@@ -151,6 +152,7 @@ impl AggregateCreate<TestUnitStructCreate> for User {
 
 impl AggregateUpdate<TestUnitStructUpdate> for User {
     type Error = &'static str;
+    type Output = Self;
 
     fn try_aggregate_update(
         self,

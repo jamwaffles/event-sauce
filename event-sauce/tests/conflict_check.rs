@@ -167,6 +167,7 @@ pub struct UserUpdated {
 /// Make User aggregate-updatable
 impl AggregateUpdate<UserUpdated> for User {
     type Error = EventError;
+    type Output = Self;
 
     fn try_aggregate_update(self, event: &Event<UserUpdated>) -> Result<Self, Self::Error> {
         let data = event

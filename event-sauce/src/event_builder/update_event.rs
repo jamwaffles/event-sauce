@@ -44,6 +44,7 @@ use uuid::Uuid;
 ///
 /// impl AggregateUpdate<UserLoggedIn> for User {
 ///     type Error = &'static str;
+///     type Output = Self;
 ///
 ///     fn try_aggregate_update(self, event: &Event<UserLoggedIn>) -> Result<Self, Self::Error> {
 ///         Ok(User {
