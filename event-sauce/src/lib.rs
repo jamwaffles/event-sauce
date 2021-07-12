@@ -171,8 +171,20 @@ where
     /// The error type to return when the entity could not be updated
     type Error;
 
+    /// The output type of the application of this event.
+    ///
+    /// This should almost always be `Self` and will be changed to `type Output = Self` by default
+    /// when [associated type
+    /// defaults](https://doc.rust-lang.org/nightly/unstable-book/language-features/associated-type-defaults.html)
+    /// are stabilised.
+    ///
+    /// Setting this field to an other type than `Self` can be useful if typestates are used to
+    /// implement a state machine on the entity, for example transitioning from `Self<State1>` to
+    /// `Self<State2>`.
+    type Output;
+
     /// Attempt to apply the passed event to this entity
-    fn try_aggregate_update(self, event: &Event<ED>) -> Result<Self, Self::Error>;
+    fn try_aggregate_update(self, event: &Event<ED>) -> Result<Self::Output, Self::Error>;
 }
 
 /// Add the ability to delete an entity
@@ -263,7 +275,7 @@ where
     ED: EventData,
 {
     /// Update the entity with an event
-    fn try_update<B>(self, builder: B) -> Result<StorageBuilder<Self, ED>, Self::Error>
+    fn try_update<B>(self, builder: B) -> Result<StorageBuilder<Self::Output, ED>, Self::Error>
     where
         B: Into<UpdateEventBuilder<ED>>,
     {
